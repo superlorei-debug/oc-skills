@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  openclaw:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: openclaw-wealth
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - ../cache:/app/cache
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - openclaw-net
+
+  # 可选：OpenClaw Gateway
+  gateway:
+    image: openclawai/openclaw:latest
+    container_name: openclaw-gateway
+    restart: unless-stopped
+    ports:
+      - "18789:18789"
+    volumes:
+      - openclaw-data:/data
+    networks:
+      - openclaw-net
+
+networks:
+  openclaw-net:
+    driver: bridge
+
+volumes:
+  openclaw-data:

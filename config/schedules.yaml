@@ -1,0 +1,53 @@
+# 定时任务配置
+# 用于 OpenClaw cron jobs
+
+schedules:
+  # 早上新闻推送
+  - id: news-morning
+    name: 早上新闻推送
+    cron: "0 9 * * *"
+    enabled: true
+    action:
+      type: script
+      script: skills/news-geopolitics/scripts/news_report.py
+    message_template: "【财富助手】早上好！今日新闻已更新"
+
+  # 晚上量化汇报
+  - id: quant-evening
+    name: 晚上量化汇报
+    cron: "0 21 * * *"
+    enabled: true
+    action:
+      type: script
+      script: skills/quant-analyst/scripts/quant_report.py
+    message_template: "【财富助手】今日量化汇报"
+
+  # 每日总览（可选）
+  - id: daily-summary
+    name: 每日总览
+    cron: "0 8 * * *"
+    enabled: false
+    action:
+      type: script
+      script: scripts/commander.py
+    message_template: "【财富助手】今日总览"
+
+  # 周三小红书
+  - id: xhs-wednesday
+    name: 小红书周三发布
+    cron: "0 21 * * 3"
+    enabled: true
+    action:
+      type: skill
+      skill: xhs-operator
+    message_template: "【小红书】周三发布时间到了"
+
+  # 周日小红书
+  - id: xhs-sunday
+    name: 小红书周日发布
+    cron: "0 21 * * 0"
+    enabled: true
+    action:
+      type: skill
+      skill: xhs-operator
+    message_template: "【小红书】周日发布时间到了"
