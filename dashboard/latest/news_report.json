@@ -1,0 +1,32 @@
+{
+  "updated_at": "2026-03-12 20:06",
+  "fetch_mode": "缓存模式",
+  "total_count": 3,
+  "high_cred_count": 3,
+  "articles": [
+    {
+      "title": "Federal Reserve Board announces approval of application by Associated Banc-Corp",
+      "published_at": "Wed, 11 Mar 2026 22:00:00 GMT",
+      "credibility": "高",
+      "core_content": "美联储政策相关消息",
+      "market_impact": "美联储政策预期变化，可能影响全球流动性",
+      "btc_strategy_impact": "若偏鹰派，BTC可能承压，网格需警惕大幅波动"
+    },
+    {
+      "title": "Federal Reserve Board announces approval of application by FirstSun Capital Bancorp",
+      "published_at": "Wed, 11 Mar 2026 22:00:00 GMT",
+      "credibility": "高",
+      "core_content": "美联储政策相关消息",
+      "market_impact": "美联储政策预期变化，可能影响全球流动性",
+      "btc_strategy_impact": "若偏鹰派，BTC可能承压，网格需警惕大幅波动"
+    },
+    {
+      "title": "Federal Reserve Board announces termination of enforcement actions with Industrial and Commercial Bank of China Ltd., Industrial and Commercial Bank o",
+      "published_at": "Tue, 10 Mar 2026 15:00:00 GMT",
+      "credibility": "高",
+      "core_content": "美联储政策相关消息",
+      "market_impact": "美联储政策预期变化，可能影响全球流动性",
+      "btc_strategy_impact": "若偏鹰派，BTC可能承压，网格需警惕大幅波动"
+    }
+  ]
+}

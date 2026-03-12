@@ -10,7 +10,7 @@
         .container { max-width: 1200px; margin: 0 auto; }
         
         /* 导航 */
-        .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .nav a { padding: 10px 20px; background: #fff; border-radius: 8px; text-decoration: none; color: #333; border: 1px solid #e0e0e0; }
         .nav a.active { background: #2563eb; color: #fff; border-color: #2563eb; }
         
@@ -23,13 +23,14 @@
         .card h2 { font-size: 16px; color: #666; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
         
         /* 指标 */
-        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
         .metric { background: #f8fafc; padding: 16px; border-radius: 8px; }
         .metric-label { font-size: 12px; color: #888; margin-bottom: 4px; }
         .metric-value { font-size: 24px; font-weight: 600; color: #1e293b; }
         .metric-value.warning { color: #f59e0b; }
         .metric-value.danger { color: #ef4444; }
         .metric-value.success { color: #10b981; }
+        .metric-value.info { color: #6b7280; }
         
         /* 列表 */
         .info-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -40,21 +41,41 @@
         
         /* 风险等级 */
         .risk-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 500; }
-        .risk-low { background: #d1fae5; color: #065f46; }
-        .risk-medium { background: #fef3c7; color: #92400e; }
-        .risk-high { background: #fee2e2; color: #991b1b; }
+        .risk-critical { background: #fee2e2; color: #991b1b; }
+        .risk-warning { background: #fef3c7; color: #92400e; }
+        .risk-ok { background: #d1fae5; color: #065f46; }
+        .risk-none { background: #f3f4f6; color: #6b7280; }
         
         /* 新闻 */
         .news-item { padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px; }
         .news-title { font-weight: 500; margin-bottom: 8px; }
+        .news-title a { color: #2563eb; text-decoration: none; }
+        .news-title a:hover { text-decoration: underline; }
         .news-meta { font-size: 12px; color: #888; margin-bottom: 8px; }
         .news-impact { font-size: 14px; color: #555; background: #fff; padding: 8px; border-radius: 6px; }
         
         /* 更新 */
         .update-time { text-align: right; color: #999; font-size: 12px; margin-top: 20px; }
+        .update-time span { color: #666; }
         
-        /* 趋势图占位 */
-        .chart-placeholder { height: 200px; background: #f8fafc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; }
+        /* 挂单价格 */
+        .price-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .price-tag { background: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 4px; font-size: 13px; }
+        
+        /* 标题截断 */
+        .truncate { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+        .truncate:hover { white-space: normal; }
+        
+        /* 时间标签 */
+        .time-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+        .time-live { background: #d1fae5; color: #065f46; }
+        .time-cache { background: #fef3c7; color: #92400e; }
+        .time-none { background: #f3f4f6; color: #6b7280; }
+        
+        @media (max-width: 768px) {
+            .info-list { grid-template-columns: 1fr; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
@@ -75,24 +96,24 @@
                 <div class="metrics">
                     <div class="metric">
                         <div class="metric-label">总体风险等级</div>
-                        <div class="metric-value danger" id="risk-level">高</div>
+                        <div class="metric-value" id="risk-level">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">今日建议</div>
-                        <div class="metric-value warning" id="overall-advice">暂时保守</div>
+                        <div class="metric-value" id="overall-advice">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">量化状态</div>
-                        <div class="metric-value danger" id="quant-status">危险</div>
+                        <div class="metric-value" id="quant-status">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">今日盈亏</div>
-                        <div class="metric-value success" id="quant-pnl">+14.13 U</div>
+                        <div class="metric-value" id="quant-pnl">-</div>
                     </div>
                 </div>
                 <div class="info-list" style="margin-top: 16px;">
-                    <div class="info-item"><span class="info-label">判断依据</span><span class="info-value" id="basis">以量化模块为主</span></div>
-                    <div class="info-item"><span class="info-label">新闻模式</span><span class="info-value" id="news-mode">实时模式</span></div>
+                    <div class="info-item"><span class="info-label">判断依据</span><span class="info-value" id="basis">-</span></div>
+                    <div class="info-item"><span class="info-label">新闻模式</span><span class="info-value" id="news-mode">-</span></div>
                 </div>
             </div>
             
@@ -101,19 +122,19 @@
                 <div class="metrics">
                     <div class="metric">
                         <div class="metric-label">库存层数</div>
-                        <div class="metric-value danger" id="grid-levels">6/6</div>
+                        <div class="metric-value" id="grid-levels">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">资金利用率</div>
-                        <div class="metric-value" id="utilization">44.6%</div>
+                        <div class="metric-value" id="utilization">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">BTC价格</div>
-                        <div class="metric-value" id="btc-price">$70,579</div>
+                        <div class="metric-value" id="btc-price">-</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">建议动作</div>
-                        <div class="metric-value warning" id="quant-action">暂停新开仓</div>
+                        <div class="metric-value" id="quant-action">-</div>
                     </div>
                 </div>
             </div>
@@ -121,21 +142,26 @@
             <div class="card">
                 <h2>📰 新闻摘要</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">高可信新闻</span><span class="info-value" id="high-cred-news">3条</span></div>
-                    <div class="info-item"><span class="info-label">最重要新闻</span><span class="info-value" id="top-news">美联储银行审批...</span></div>
+                    <div class="info-item"><span class="info-label">高可信新闻</span><span class="info-value" id="high-cred-news">-</span></div>
+                    <div class="info-item"><span class="info-label">最重要新闻</span><span class="info-value"><span class="truncate" id="top-news" title="">-</span></span></div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>🏠 宏观摘要</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value">弱修复</span></div>
-                    <div class="info-item"><span class="info-label">家庭策略</span><span class="info-value">稳健偏保守</span></div>
-                    <div class="info-item"><span class="info-label">一句话建议</span><span class="info-value">先求稳，保留安全垫</span></div>
+                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value" id="macro-phase">-</span></div>
+                    <div class="info-item"><span class="info-label">家庭策略</span><span class="info-value" id="macro-strategy">-</span></div>
+                    <div class="info-item"><span class="info-label">一句话建议</span><span class="info-value" id="macro-advice">-</span></div>
                 </div>
             </div>
             
-            <div class="update-time">最后更新：<span id="update-time">2026-03-12 18:00</span></div>
+            <div class="update-time">
+                <span>总览:</span> <span id="commander-time">-</span> | 
+                <span>量化:</span> <span id="quant-time">-</span> | 
+                <span>新闻:</span> <span id="news-time">-</span> | 
+                <span>宏观:</span> <span id="macro-time">-</span>
+            </div>
         </div>
         
         <!-- 量化页 -->
@@ -143,46 +169,48 @@
             <div class="card">
                 <h2>📊 量化详情</h2>
                 <div class="metrics">
-                    <div class="metric"><div class="metric-label">当前价格</div><div class="metric-value" id="q-price">$70,579</div></div>
-                    <div class="metric"><div class="metric-label">当前持仓</div><div class="metric-value" id="q-position">0.0316 BTC</div></div>
-                    <div class="metric"><div class="metric-label">资金利用率</div><div class="metric-value" id="q-util">44.6%</div></div>
-                    <div class="metric"><div class="metric-label">库存层数</div><div class="metric-value danger" id="q-levels">6/6</div></div>
+                    <div class="metric"><div class="metric-label">当前价格</div><div class="metric-value" id="q-price">-</div></div>
+                    <div class="metric"><div class="metric-label">当前持仓</div><div class="metric-value" id="q-position">-</div></div>
+                    <div class="metric"><div class="metric-label">资金利用率</div><div class="metric-value" id="q-util">-</div></div>
+                    <div class="metric"><div class="metric-label">库存层数</div><div class="metric-value" id="q-levels">-</div></div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>💰 资金情况</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">策略总U数</span><span class="info-value">5000 U</span></div>
-                    <div class="info-item"><span class="info-label">已持仓占用</span><span class="info-value">2232 U</span></div>
-                    <div class="info-item"><span class="info-label">剩余U数</span><span class="info-value">2768 U</span></div>
-                    <div class="info-item"><span class="info-label">挂单数量</span><span class="info-value">6单</span></div>
+                    <div class="info-item"><span class="info-label">策略总U数</span><span class="info-value" id="q-total-u">-</span></div>
+                    <div class="info-item"><span class="info-label">已持仓占用</span><span class="info-value" id="q-used-u">-</span></div>
+                    <div class="info-item"><span class="info-label">剩余U数</span><span class="info-value" id="q-remaining-u">-</span></div>
+                    <div class="info-item"><span class="info-label">挂单数量</span><span class="info-value" id="q-orders">-</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📉 挂单价格明细</h2>
+                <div class="price-list" id="q-prices">
+                    <span class="price-tag">暂无数据</span>
                 </div>
             </div>
             
             <div class="card">
                 <h2>📈 盈亏情况</h2>
                 <div class="metrics">
-                    <div class="metric"><div class="metric-label">今日盈亏</div><div class="metric-value success">+14.13 U</div></div>
-                    <div class="metric"><div class="metric-label">昨日盈亏</div><div class="metric-value">暂无数据</div></div>
+                    <div class="metric"><div class="metric-label">今日盈亏</div><div class="metric-value" id="q-pnl">-</div></div>
+                    <div class="metric"><div class="metric-label">昨日盈亏</div><div class="metric-value" id="q-yesterday-pnl">-</div></div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>⚠️ 风险提示</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">当前状态</span><span class="info-value danger">危险</span></div>
-                    <div class="info-item"><span class="info-label">风险原因</span><span class="info-value">库存层数6已打满</span></div>
-                    <div class="info-item"><span class="info-label">建议动作</span><span class="info-value warning">立即暂停新开仓</span></div>
+                    <div class="info-item"><span class="info-label">当前状态</span><span class="info-value" id="q-status">-</span></div>
+                    <div class="info-item"><span class="info-label">风险原因</span><span class="info-value" id="q-risk-reason">-</span></div>
+                    <div class="info-item"><span class="info-label">建议动作</span><span class="info-value" id="q-action">-</span></div>
                 </div>
             </div>
             
-            <div class="card">
-                <h2>📉 趋势（开发中）</h2>
-                <div class="chart-placeholder">趋势图表待开发</div>
-            </div>
-            
-            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+            <div class="update-time">更新时间：<span id="q-time">-</span></div>
         </div>
         
         <!-- 新闻页 -->
@@ -190,32 +218,29 @@
             <div class="card">
                 <h2>📰 新闻概览</h2>
                 <div class="metrics">
-                    <div class="metric"><div class="metric-label">当前模式</div><div class="metric-value">实时模式</div></div>
-                    <div class="metric"><div class="metric-label">今日新闻</div><div class="metric-value">3条</div></div>
-                    <div class="metric"><div class="metric-label">高可信</div><div class="metric-value">3条</div></div>
+                    <div class="metric">
+                        <div class="metric-label">当前模式</div>
+                        <div class="metric-value" id="n-mode">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">今日新闻</div>
+                        <div class="metric-value" id="n-total">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">高可信</div>
+                        <div class="metric-value" id="n-high">-</div>
+                    </div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>📄 新闻详情</h2>
-                <div class="news-item">
-                    <div class="news-title">1. Federal Reserve Board announces approval of application by Associated Banc-Corp</div>
-                    <div class="news-meta">时间：2026-03-11 | 来源：Federal Reserve | 可信度：高</div>
-                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化，可能影响全球流动性<br>对BTC/量化策略的意义：若偏鹰派，BTC可能承压</div>
-                </div>
-                <div class="news-item">
-                    <div class="news-title">2. Federal Reserve Board announces approval of application by FirstSun Capital Bancorp</div>
-                    <div class="news-meta">时间：2026-03-11 | 来源：Federal Reserve | 可信度：高</div>
-                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化，可能影响全球流动性</div>
-                </div>
-                <div class="news-item">
-                    <div class="news-title">3. Federal Reserve Board announces termination of enforcement actions</div>
-                    <div class="news-meta">时间：2026-03-10 | 来源：Federal Reserve | 可信度：高</div>
-                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化</div>
+                <div id="n-articles">
+                    <div class="news-item">暂无数据</div>
                 </div>
             </div>
             
-            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+            <div class="update-time">更新时间：<span id="n-time">-</span></div>
         </div>
         
         <!-- 宏观页 -->
@@ -223,18 +248,16 @@
             <div class="card">
                 <h2>📊 宏观阶段</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value">弱修复</span></div>
-                    <div class="info-item"><span class="info-label">阶段定义</span><span class="info-value">经济在恢复，但恢复力度还不强</span></div>
+                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value" id="m-phase">-</span></div>
+                    <div class="info-item"><span class="info-label">阶段定义</span><span class="info-value" id="m-phase-def">-</span></div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>📋 判断依据</h2>
                 <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
-                    <ul style="margin-left: 20px; line-height: 2;">
-                        <li>消费恢复不均衡</li>
-                        <li>就业预期仍偏谨慎</li>
-                        <li>居民风险偏好还不高</li>
+                    <ul id="m-reasons" style="margin-left: 20px; line-height: 2;">
+                        <li>暂无数据</li>
                     </ul>
                 </div>
             </div>
@@ -242,31 +265,209 @@
             <div class="card">
                 <h2>🏠 家庭理财策略</h2>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">策略</span><span class="info-value">稳健偏保守</span></div>
-                    <div class="info-item"><span class="info-label">策略定义</span><span class="info-value">家庭资金应以现金、定存、稳健类资产为主</span></div>
+                    <div class="info-item"><span class="info-label">策略</span><span class="info-value" id="m-strategy">-</span></div>
+                    <div class="info-item"><span class="info-label">策略定义</span><span class="info-value" id="m-strategy-def">-</span></div>
                 </div>
             </div>
             
             <div class="card">
                 <h2>💡 建议</h2>
                 <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
-                    <ul style="margin-left: 20px; line-height: 2;">
-                        <li>先保留流动性</li>
-                        <li>不要激进加大高风险配置</li>
-                        <li>可以适度增加稳健配置</li>
-                        <li>控制整体风险敞口</li>
+                    <ul id="m-implications" style="margin-left: 20px; line-height: 2;">
+                        <li>暂无数据</li>
                     </ul>
                 </div>
-                <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-weight: 500;">
-                    一句话建议：当前先求稳，保留安全垫，再逐步优化配置。
+                <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-weight: 500;" id="m-advice">
+                    暂无数据
                 </div>
             </div>
             
-            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+            <div class="update-time">更新时间：<span id="m-time">-</span></div>
         </div>
     </div>
     
     <script>
+        // 状态映射
+        const statusMap = {
+            'critical': { text: '危险', class: 'danger' },
+            'warning': { text: '预警', class: 'warning' },
+            'ok': { text: '正常', class: 'success' }
+        };
+        
+        const riskMap = {
+            'critical': { text: '高', class: 'danger' },
+            'warning': { text: '中', class: 'warning' },
+            'ok': { text: '低', class: 'success' },
+            'none': { text: '无', class: 'info' }
+        };
+        
+        // 加载数据
+        async function loadData() {
+            try {
+                const [commander, quant, news, macro] = await Promise.all([
+                    fetch('data/latest/commander_summary.json').then(r => r.json()),
+                    fetch('data/latest/quant_report.json').then(r => r.json()),
+                    fetch('data/latest/news_report.json').then(r => r.json()),
+                    fetch('data/latest/macro_report.json').then(r => r.json())
+                ]);
+                
+                // 更新时间
+                document.getElementById('commander-time').textContent = commander.updated_at || '-';
+                document.getElementById('quant-time').textContent = quant.updated_at || '-';
+                document.getElementById('news-time').textContent = news.updated_at || '-';
+                document.getElementById('macro-time').textContent = macro.updated_at || '-';
+                
+                // 总览 - 总体状态
+                const risk = riskMap[commander.overall_risk_level] || riskMap['none'];
+                const rLevel = document.getElementById('risk-level');
+                rLevel.textContent = risk.text;
+                rLevel.className = 'metric-value ' + risk.class;
+                
+                document.getElementById('overall-advice').textContent = commander.overall_advice || '-';
+                
+                const qStatus = statusMap[quant.status] || statusMap['ok'];
+                const qStatEl = document.getElementById('quant-status');
+                qStatEl.textContent = qStatus.text;
+                qStatEl.className = 'metric-value ' + qStatus.class;
+                
+                const pnlVal = quant.today_pnl_u || 0;
+                const pnlEl = document.getElementById('quant-pnl');
+                pnlEl.textContent = (pnlVal >= 0 ? '+' : '') + pnlVal.toFixed(2) + ' U';
+                pnlEl.className = 'metric-value ' + (pnlVal >= 0 ? 'success' : 'danger');
+                
+                document.getElementById('basis').textContent = commander.judgement_basis || '-';
+                
+                // 总览 - 新闻
+                const nMode = document.getElementById('news-mode');
+                if (news.fetch_mode === '实时模式') {
+                    nMode.innerHTML = '<span class="time-badge time-live">实时</span>';
+                } else if (news.fetch_mode === '缓存模式') {
+                    nMode.innerHTML = '<span class="time-badge time-cache">缓存</span>';
+                } else {
+                    nMode.innerHTML = '<span class="time-badge time-none">无数据</span>';
+                }
+                
+                // 总览 - 量化
+                document.getElementById('grid-levels').textContent = quant.inventory_layers_used + '/' + quant.inventory_layers_limit;
+                document.getElementById('grid-levels').className = 'metric-value ' + (quant.inventory_layers_used >= quant.inventory_layers_limit ? 'danger' : '');
+                document.getElementById('utilization').textContent = quant.capital_utilization_pct + '%';
+                document.getElementById('btc-price').textContent = '$' + (quant.price_usd || 0).toLocaleString();
+                document.getElementById('quant-action').textContent = quant.top_action || '-';
+                
+                // 总览 - 新闻摘要
+                document.getElementById('high-cred-news').textContent = news.high_cred_count + '条';
+                const topNews = document.getElementById('top-news');
+                if (news.articles && news.articles[0]) {
+                    topNews.textContent = news.articles[0].title || '-';
+                    topNews.title = news.articles[0].title || '';
+                }
+                
+                // 总览 - 宏观
+                document.getElementById('macro-phase').textContent = macro.macro_phase || '-';
+                document.getElementById('macro-strategy').textContent = macro.family_strategy || '-';
+                document.getElementById('macro-advice').textContent = macro.one_line_advice || '-';
+                
+                // ===== 量化页 =====
+                document.getElementById('q-price').textContent = '$' + (quant.price_usd || 0).toLocaleString();
+                document.getElementById('q-position').textContent = (quant.position_btc || 0).toFixed(4) + ' BTC';
+                document.getElementById('q-util').textContent = quant.capital_utilization_pct + '%';
+                
+                const qLev = document.getElementById('q-levels');
+                qLev.textContent = quant.inventory_layers_used + '/' + quant.inventory_layers_limit;
+                qLev.className = 'metric-value ' + (quant.inventory_layers_used >= quant.inventory_layers_limit ? 'danger' : '');
+                
+                document.getElementById('q-total-u').textContent = quant.total_u + ' U';
+                document.getElementById('q-used-u').textContent = quant.used_u + ' U';
+                document.getElementById('q-remaining-u').textContent = quant.remaining_u + ' U';
+                document.getElementById('q-orders').textContent = quant.open_orders_count + '单';
+                
+                // 挂单价格
+                const priceList = document.getElementById('q-prices');
+                if (quant.open_orders_prices && quant.open_orders_prices.length > 0) {
+                    priceList.innerHTML = quant.open_orders_prices.map(p => 
+                        '<span class="price-tag">$' + p.toLocaleString() + '</span>'
+                    ).join('');
+                } else {
+                    priceList.innerHTML = '<span class="price-tag">暂无挂单</span>';
+                }
+                
+                const todayPnl = quant.today_pnl_u || 0;
+                const pnlEl2 = document.getElementById('q-pnl');
+                pnlEl2.textContent = (todayPnl >= 0 ? '+' : '') + todayPnl.toFixed(2) + ' U';
+                pnlEl2.className = 'metric-value ' + (todayPnl >= 0 ? 'success' : 'danger');
+                
+                const yesPnl = quant.yesterday_pnl_u || 0;
+                const yesEl = document.getElementById('q-yesterday-pnl');
+                yesEl.textContent = yesPnl !== 0 ? ((yesPnl >= 0 ? '+' : '') + yesPnl.toFixed(2) + ' U') : '暂无数据';
+                
+                const qStat2 = document.getElementById('q-status');
+                qStat2.textContent = qStatus.text;
+                qStat2.className = 'info-value ' + qStatus.class;
+                document.getElementById('q-risk-reason').textContent = quant.risk_reason || '-';
+                document.getElementById('q-action').textContent = quant.top_action || '-';
+                
+                // ===== 新闻页 =====
+                const nMode2 = document.getElementById('n-mode');
+                if (news.fetch_mode === '实时模式') {
+                    nMode2.innerHTML = '<span class="time-badge time-live">实时</span>';
+                } else if (news.fetch_mode === '缓存模式') {
+                    nMode2.innerHTML = '<span class="time-badge time-cache">缓存</span>';
+                } else {
+                    nMode2.innerHTML = '<span class="time-badge time-none">无数据</span>';
+                }
+                
+                document.getElementById('n-total').textContent = news.total_count + '条';
+                document.getElementById('n-high').textContent = news.high_cred_count + '条';
+                
+                const artList = document.getElementById('n-articles');
+                if (news.articles && news.articles.length > 0) {
+                    artList.innerHTML = news.articles.map((a, i) => `
+                        <div class="news-item">
+                            <div class="news-title">
+                                ${a.url ? '<a href="' + a.url + '" target="_blank">' + (a.title || '').substring(0,80) + '</a>' : (a.title || '').substring(0,80)}
+                            </div>
+                            <div class="news-meta">
+                                ${a.published_at || ''} | 来源：${a.source || '-'} | 可信度：${a.credibility || '-'}
+                            </div>
+                            <div class="news-impact">
+                                核心内容：${a.core_content || '-'}<br>
+                                市场影响：${a.market_impact || '-'}<br>
+                                对BTC/量化策略的意义：${a.btc_strategy_impact || '-'}
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    artList.innerHTML = '<div class="news-item">暂无数据</div>';
+                }
+                
+                // ===== 宏观页 =====
+                document.getElementById('m-phase').textContent = macro.macro_phase || '-';
+                document.getElementById('m-phase-def').textContent = macro.macro_phase_definition || '-';
+                
+                const reasonsEl = document.getElementById('m-reasons');
+                if (macro.judgement_reasons && macro.judgement_reasons.length > 0) {
+                    reasonsEl.innerHTML = macro.judgement_reasons.map(r => '<li>' + r + '</li>').join('');
+                } else {
+                    reasonsEl.innerHTML = '<li>暂无数据</li>';
+                }
+                
+                document.getElementById('m-strategy').textContent = macro.family_strategy || '-';
+                document.getElementById('m-strategy-def').textContent = macro.family_strategy_definition || '-';
+                
+                const implEl = document.getElementById('m-implications');
+                if (macro.implications && macro.implications.length > 0) {
+                    implEl.innerHTML = macro.implications.map(i => '<li>' + i + '</li>').join('');
+                } else {
+                    implEl.innerHTML = '<li>暂无数据</li>';
+                }
+                
+                document.getElementById('m-advice').textContent = macro.one_line_advice || '暂无数据';
+                
+            } catch(e) {
+                console.error('数据加载失败:', e);
+            }
+        }
+        
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
@@ -274,19 +475,11 @@
             event.target.classList.add('active');
         }
         
-        // 刷新数据
-        function refreshData() {
-            fetch('data/dashboard.json')
-                .then(r => r.json())
-                .then(data => {
-                    // 更新数据
-                    console.log('数据已刷新:', data);
-                })
-                .catch(e => console.log('数据加载失败，使用默认数据'));
-        }
+        // 初始加载
+        loadData();
         
-        // 每分钟刷新
-        setInterval(refreshData, 60000);
+        // 每30秒刷新
+        setInterval(loadData, 30000);
     </script>
 </body>
 </html>

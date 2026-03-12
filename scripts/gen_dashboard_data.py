@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-生成看板数据 V3
-数值字段用number，状态枚举统一，展示层再格式化
+生成看板数据 V4
+补挂单价格、资金拆分
 """
 import subprocess
 import json
@@ -35,6 +35,7 @@ quant_data = {
     "remaining_u": 0,
     "capital_utilization_pct": 0.0,
     "open_orders_count": 0,
+    "open_orders_prices": [],
     "today_pnl_u": 0.0,
     "yesterday_pnl_u": 0.0,
     "status": "ok",
@@ -44,6 +45,7 @@ quant_data = {
 
 in_risk = False
 in_action = False
+in_prices = False
 
 for line in quant_out.split("\n"):
     line_stripped = line.strip()
@@ -103,9 +105,9 @@ for line in quant_out.split("\n"):
             quant_data["yesterday_pnl_u"] = 0.0
     elif "当前状态：" in line:
         status = line.split("：")[-1].strip()
-        if "危险" in status or "critical" in status.lower():
+        if "危险" in status:
             quant_data["status"] = "critical"
-        elif "预警" in status or "warning" in status.lower():
+        elif "预警" in status:
             quant_data["status"] = "warning"
         else:
             quant_data["status"] = "ok"
@@ -119,6 +121,31 @@ for line in quant_out.split("\n"):
     elif in_action and line_stripped.startswith("-"):
         quant_data["top_action"] = line_stripped.replace("-","").strip()
         in_action = False
+    # 挂单价格
+    elif re.match(r"^\s*\d+[.\d]*\s*$", line_stripped) and "挂单" not in line:
+        try:
+            price = float(line_stripped.replace(",",""))
+            if price > 0:
+                quant_data["open_orders_prices"].append(price)
+        except:
+            pass
+
+# 单独解析挂单价格
+price_pattern = r"(\d+[\d,]*)\s*$"
+for line in quant_out.split("\n"):
+    if "买入挂单价格：" in line:
+        in_prices = True
+    elif in_prices:
+        match = re.search(price_pattern, line)
+        if match:
+            try:
+                price = float(match.group(1).replace(",",""))
+                if price > 0 and price not in quant_data["open_orders_prices"]:
+                    quant_data["open_orders_prices"].append(price)
+            except:
+                pass
+        elif "今日盈亏" in line or "资金利用率" in line:
+            in_prices = False
 
 order_match = re.search(r"买入挂单数量：(\d+)", quant_out)
 if order_match:
@@ -168,6 +195,10 @@ for line in news_out.split("\n"):
             current_article["btc_strategy_impact"] = line.split("：", 1)[-1].strip()
         elif "来源：" in line and "可信度" not in line:
             current_article["source"] = line.split("：")[-1].strip()
+        elif "链接：" in line:
+            url = line.split("：")[-1].strip()
+            if url and url != "":
+                current_article["url"] = url
 
 if current_article and current_article.get("title"):
     news_data["articles"].append(current_article)

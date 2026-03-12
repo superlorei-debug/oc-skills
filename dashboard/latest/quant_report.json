@@ -1,0 +1,26 @@
+{
+  "updated_at": "2026-03-12 20:06",
+  "symbol": "BTC",
+  "price_usd": 70579.0,
+  "position_btc": 0.0316,
+  "inventory_layers_used": 6,
+  "inventory_layers_limit": 6,
+  "total_u": 5000,
+  "used_u": 2232,
+  "remaining_u": 2768,
+  "capital_utilization_pct": 44.6,
+  "open_orders_count": 6,
+  "open_orders_prices": [
+    69581.0,
+    68583.0,
+    67585.0,
+    66548.0,
+    65541.0,
+    64533.0
+  ],
+  "today_pnl_u": 24.55,
+  "yesterday_pnl_u": 0.0,
+  "status": "critical",
+  "risk_reason": "库存层数6已打满",
+  "top_action": "立即暂停新开仓"
+}
