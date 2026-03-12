@@ -32,6 +32,8 @@ quant_data = {
     "inventory_layers_limit": 6,
     "total_u": 0,
     "used_u": 0,
+    "open_orders_reserved_u": 0,
+    "total_used_u": 0,
     "remaining_u": 0,
     "capital_utilization_pct": 0.0,
     "open_orders_count": 0,
@@ -79,6 +81,18 @@ for line in quant_out.split("\n"):
             quant_data["used_u"] = int(val)
         except:
             quant_data["used_u"] = 0
+    elif "挂单占用：" in line:
+        val = line.split("：")[-1].replace("U","").strip()
+        try:
+            quant_data["open_orders_reserved_u"] = int(val)
+        except:
+            quant_data["open_orders_reserved_u"] = 0
+    elif "已用U数合计：" in line:
+        val = line.split("：")[-1].replace("U","").strip()
+        try:
+            quant_data["total_used_u"] = int(val)
+        except:
+            quant_data["total_used_u"] = 0
     elif "剩余U数：" in line:
         val = line.split("：")[-1].replace("U","").strip()
         try:
@@ -175,11 +189,16 @@ in_article = False
 
 for line in news_out.split("\n"):
     line_stripped = line.strip()
+    # 解析新闻块开始，如 "--- 1. Federal Reserve (美联储) ---"
     if "---" in line_stripped and "新闻" not in line_stripped:
         if current_article and current_article.get("title"):
             news_data["articles"].append(current_article)
         current_article = {}
         in_article = True
+        # 从分隔行提取来源，如 "--- 1. Federal Reserve (美联储) ---"
+        source_match = re.search(r"---\s*\d+\.\s*([^-(]+)", line_stripped)
+        if source_match:
+            current_article["source"] = source_match.group(1).strip()
     elif in_article:
         if "标题：" in line:
             current_article["title"] = line.split("：", 1)[-1].strip()
@@ -194,7 +213,8 @@ for line in news_out.split("\n"):
         elif "对BTC" in line:
             current_article["btc_strategy_impact"] = line.split("：", 1)[-1].strip()
         elif "来源：" in line and "可信度" not in line:
-            current_article["source"] = line.split("：")[-1].strip()
+            if not current_article.get("source"):
+                current_article["source"] = line.split("：")[-1].strip()
         elif "链接：" in line:
             url = line.split("：")[-1].strip()
             if url and url != "":

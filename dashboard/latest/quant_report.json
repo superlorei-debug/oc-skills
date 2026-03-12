@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-03-12 20:06",
+  "updated_at": "2026-03-12 20:14",
   "symbol": "BTC",
   "price_usd": 70579.0,
   "position_btc": 0.0316,
@@ -18,7 +18,7 @@
     65541.0,
     64533.0
   ],
-  "today_pnl_u": 24.55,
+  "today_pnl_u": 27.15,
   "yesterday_pnl_u": 0.0,
   "status": "critical",
   "risk_reason": "库存层数6已打满",
