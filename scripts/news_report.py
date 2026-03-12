@@ -71,7 +71,8 @@ def fetch_rss(url, source_name, credibility, category):
         items = []
         import xml.etree.ElementTree as ET
         try:
-            root = ET.fromstring(r.text)
+            # 使用 content 而不是 text，避免编码问题
+            root = ET.fromstring(r.content)
             for item in root.findall('.//item')[:3]:
                 title = item.find('title')
                 link = item.find('link')
@@ -93,10 +94,13 @@ def fetch_rss(url, source_name, credibility, category):
                     "date": date_text[:30] if date_text else datetime.now().strftime("%Y-%m-%d"),
                     "summary": summary
                 })
-        except:
-            pass
+        except Exception as e:
+            print(f"Parse error: {e}", flush=True)
         
         return items
+    except Exception as e:
+        print(f"Request error: {e}", flush=True)
+        return []
     except Exception as e:
         return []
 
