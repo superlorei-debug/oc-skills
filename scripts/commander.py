@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-Commander - 主控汇总模块 V6
-新闻 + 宏观 详细输出
+Commander - 主控汇总模块 V8
+支持简版/详细版两种模式
 """
 import subprocess
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 
 HISTORY_DIR = "data/history/commander"
+
+# 检测是否详细模式
+DETAIL_MODE = "--detail" in sys.argv or "-d" in sys.argv
 
 def get_today_file():
     return f"{HISTORY_DIR}/{datetime.now().strftime('%Y-%m-%d')}.json"
@@ -72,42 +76,31 @@ def parse_quant():
     return data
 
 def parse_news():
-    """解析新闻详细输出"""
     out, _ = run_cmd("scripts/news_report.py")
-    data = {
-        "mode": "无数据",
-        "news": [],
-        "time": datetime.now().strftime('%H:%M')
-    }
+    data = {"mode": "无数据", "news": [], "time": datetime.now().strftime('%H:%M')}
     
-    # 解析模式和更新时间
     for line in out.split("\n"):
         if "当前模式：" in line:
             data["mode"] = line.split("：")[-1].strip()
         if "更新时间：" in line and "当前模式" not in line:
             data["time"] = line.split("：")[-1].strip()[:5]
     
-    # 解析每条新闻
     current_news = {}
     in_news = False
     for line in out.split("\n"):
         line = line.strip()
-        
-        # 新新闻开始
         if "---" in line and "新闻" not in line:
             if current_news and current_news.get("title"):
                 data["news"].append(current_news)
             current_news = {}
             in_news = True
             continue
-        
         if in_news:
-            # 解析各字段
             if "标题：" in line:
                 current_news["title"] = line.split("：", 1)[-1].strip()
             elif "来源可信度：" in line:
                 current_news["credibility"] = line.split("：")[-1].strip()
-            elif "时间：" in line and "更新时间" not in line:
+            elif "时间：" in line and "更新" not in line:
                 current_news["date"] = line.split("：")[-1].strip()
             elif "核心内容：" in line:
                 current_news["content"] = line.split("：", 1)[-1].strip()
@@ -116,30 +109,17 @@ def parse_news():
             elif "对BTC/量化策略的意义：" in line:
                 current_news["meaning"] = line.split("：", 1)[-1].strip()
     
-    # 最后一条
     if current_news and current_news.get("title"):
         data["news"].append(current_news)
     
     return data
 
 def parse_macro():
-    """解析宏观详细输出"""
     out, _ = run_cmd("scripts/macro_report.py")
-    data = {
-        "phase": "未知",
-        "phase_def": "",
-        "reasons": [],
-        "strategy": "稳健",
-        "strategy_def": "",
-        "implications": [],
-        "advice": "无",
-        "time": datetime.now().strftime('%H:%M')
-    }
-    
+    data = {"phase": "未知", "phase_def": "", "reasons": [], "strategy": "稳健", "strategy_def": "", "implications": [], "advice": "无", "time": datetime.now().strftime('%H:%M')}
     current_section = ""
     for line in out.split("\n"):
         line = line.strip()
-        
         if "当前阶段：" in line and "定义" not in line:
             data["phase"] = line.split("：")[-1].strip()
         elif "当前阶段定义：" in line:
@@ -168,23 +148,15 @@ def main():
     n = parse_news()
     m = parse_macro()
     
-    # 保存今日摘要
     try:
         pnl = float(q.get("pnl", "0"))
         save_daily_summary(q.get("status"), n.get("mode"), m.get("phase"), "待定", pnl)
-    except:
-        pass
+    except: pass
     
-    # 昨日对比
     yesterday = load_yesterday()
     if yesterday:
         if yesterday.get("quant_status") != q.get("status"):
-            if q.get("status") == "预警":
-                risk_change = "风险上升"
-            elif q.get("status") == "正常":
-                risk_change = "风险下降"
-            else:
-                risk_change = "风险上升"
+            risk_change = "风险上升" if q.get("status") == "预警" else ("风险下降" if q.get("status") == "正常" else "风险上升")
         else:
             risk_change = "无明显变化"
     else:
@@ -192,10 +164,12 @@ def main():
     
     print("="*50)
     print("📋 今日总览")
+    if DETAIL_MODE:
+        print("(详细版)")
     print("="*50)
     print()
     
-    # 一、量化
+    # 一、量化（始终详细）
     print("一、量化策略")
     print(f"- 更新时间：{q['time']}")
     print(f"- 状态：{q['status']}")
@@ -206,7 +180,7 @@ def main():
     print(f"- 相比昨日：{risk_change}")
     print()
     
-    # 二、新闻
+    # 二、新闻（根据模式选择展示方式）
     print("二、新闻影响")
     print(f"- 更新时间：{n['time']}")
     print(f"- 当前模式：{n['mode']}")
@@ -214,49 +188,74 @@ def main():
     
     if n['mode'] in ["实时模式", "缓存模式"] and n.get("news"):
         news_list = n.get("news", [])
-        for i, news in enumerate(news_list[:3], 1):
-            title = news.get('title', '无')[:60]
-            content = news.get('content', '暂无')
-            impact = news.get('impact', '暂无')
-            meaning = news.get('meaning', '暂无')
-            credibility = news.get('credibility', '低')
-            
-            print(f"{i}. 新闻标题：{title}")
-            print(f"   - 核心内容：{content}")
-            print(f"   - 市场影响：{impact}")
-            print(f"   - 对BTC/量化策略的意义：{meaning}")
-            print(f"   - 来源可信度：{credibility}")
-            print()
         
-        if len(news_list) > 3:
-            print(f"其余{len(news_list)-3}条略")
+        if DETAIL_MODE:
+            # 详细版：显示每条新闻的完整信息
+            for i, news in enumerate(news_list[:3], 1):
+                title = news.get('title', '无')[:60]
+                content = news.get('content', '暂无')
+                impact = news.get('impact', '暂无')
+                meaning = news.get('meaning', '暂无')
+                credibility = news.get('credibility', '低')
+                
+                print(f"{i}. 新闻标题：{title}")
+                print(f"   - 核心内容：{content}")
+                print(f"   - 市场影响：{impact}")
+                print(f"   - 对BTC/量化策略的意义：{meaning}")
+                print(f"   - 来源可信度：{credibility}")
+                print()
+            
+            if len(news_list) > 3:
+                print(f"其余{len(news_list)-3}条略")
+                print()
+        else:
+            # 简版：只显示摘要
+            high_count = len([n for n in news_list if n.get('credibility') == '高'])
+            sources = list(set([n.get('title', '')[:20] for n in news_list[:2]]))
+            summary = f"{len(news_list)}条新闻"
+            if high_count > 0:
+                summary += f"（{high_count}条高可信）"
+            
+            print(f"- {summary}")
+            # 一句话总结
+            if any("approval" in n.get('title','').lower() for n in news_list):
+                print("- 主要是银行申请审批，无重大政策变化")
             print()
     else:
         print("- 当前新闻模块未获取到有效实时新闻，本次判断暂不纳入新闻因素")
         print()
     
-    # 三、宏观
+    # 三、宏观（根据模式选择展示方式）
     print("三、宏观 / 家庭理财")
     print(f"- 更新时间：{m['time']}")
     print()
-    print(f"1. 当前阶段：{m['phase']}")
-    print()
-    print(f"2. 当前阶段定义：{m['phase_def']}")
-    print()
-    print(f"3. 为什么是这个阶段：")
-    for reason in m.get('reasons', [])[:3]:
-        print(f"   - {reason}")
-    print()
-    print(f"4. 家庭策略：{m['strategy']}")
-    print()
-    print(f"5. 家庭策略定义：{m['strategy_def']}")
-    print()
-    print(f"6. 对我现在意味着什么：")
-    for impl in m.get('implications', [])[:4]:
-        print(f"   - {impl}")
-    print()
-    print(f"7. 一句话建议：{m['advice']}")
-    print()
+    
+    if DETAIL_MODE:
+        # 详细版
+        print(f"1. 当前阶段：{m['phase']}")
+        print()
+        print(f"2. 当前阶段定义：{m['phase_def']}")
+        print()
+        print(f"3. 为什么是这个阶段：")
+        for reason in m.get('reasons', [])[:3]:
+            print(f"   - {reason}")
+        print()
+        print(f"4. 家庭策略：{m['strategy']}")
+        print()
+        print(f"5. 家庭策略定义：{m['strategy_def']}")
+        print()
+        print(f"6. 对我现在意味着什么：")
+        for impl in m.get('implications', [])[:4]:
+            print(f"   - {impl}")
+        print()
+        print(f"7. 一句话建议：{m['advice']}")
+        print()
+    else:
+        # 简版
+        print(f"- 当前阶段：{m['phase']}")
+        print(f"- 家庭策略：{m['strategy']}")
+        print(f"- 一句话建议：{m['advice']}")
+        print()
     
     # 四、总判断
     print("四、总判断")
@@ -264,7 +263,6 @@ def main():
     news_valid = n['mode'] in ["实时模式", "缓存模式"] and n.get("news")
     has_risk = news_valid and any("利空" in n.get('title','') or "承压" in str(n) for n in n.get("news", []))
     
-    # 计算风险等级
     risk_score = 0
     if q['status'] == "危险": risk_score += 3
     elif q['status'] == "预警": risk_score += 2
@@ -281,7 +279,6 @@ def main():
         risk_level = "低"
         overall = "继续运行"
     
-    # 判断依据
     if q['status'] == "危险" or (not news_valid and q['status'] == "预警"):
         basis = "以量化模块为主"
     elif has_risk:
@@ -293,7 +290,6 @@ def main():
     
     news_note = "" if news_valid else "（本次总判断暂不纳入新闻因素）"
     
-    # 压缩建议
     if overall == "暂时保守":
         advice = f"总体偏保守，{q['action']}"
     elif overall == "谨慎运行":
