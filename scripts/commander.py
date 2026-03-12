@@ -80,7 +80,7 @@ def parse_news():
         "time": datetime.now().strftime('%H:%M')
     }
     
-    mode_line = ""
+    # 解析模式和更新时间
     for line in out.split("\n"):
         if "当前模式：" in line:
             data["mode"] = line.split("：")[-1].strip()
@@ -91,21 +91,32 @@ def parse_news():
     current_news = {}
     in_news = False
     for line in out.split("\n"):
+        line = line.strip()
+        
+        # 新新闻开始
         if "---" in line and "新闻" not in line:
             if current_news and current_news.get("title"):
                 data["news"].append(current_news)
             current_news = {}
             in_news = True
-        elif in_news:
+            continue
+        
+        if in_news:
+            # 解析各字段
             if "标题：" in line:
                 current_news["title"] = line.split("：", 1)[-1].strip()
-            elif "可信度：" in line:
+            elif "来源可信度：" in line:
                 current_news["credibility"] = line.split("：")[-1].strip()
-            elif "时间：" in line and not current_news.get("date"):
+            elif "时间：" in line and "更新时间" not in line:
                 current_news["date"] = line.split("：")[-1].strip()
-            elif "链接：" in line:
-                current_news["link"] = line.split("：")[-1].strip()
+            elif "核心内容：" in line:
+                current_news["content"] = line.split("：", 1)[-1].strip()
+            elif "市场影响：" in line:
+                current_news["impact"] = line.split("：", 1)[-1].strip()
+            elif "对BTC/量化策略的意义：" in line:
+                current_news["meaning"] = line.split("：", 1)[-1].strip()
     
+    # 最后一条
     if current_news and current_news.get("title"):
         data["news"].append(current_news)
     
@@ -202,29 +213,23 @@ def main():
     print()
     
     if n['mode'] in ["实时模式", "缓存模式"] and n.get("news"):
-        for i, news in enumerate(n['news'][:3], 1):
-            print(f"{i}. 新闻标题：{news.get('title', '无')[:50]}")
-            # 简单影响分析
-            title = news.get('title', '').lower()
-            impact = ""
-            btc_meaning = ""
+        news_list = n.get("news", [])
+        for i, news in enumerate(news_list[:3], 1):
+            title = news.get('title', '无')[:60]
+            content = news.get('content', '暂无')
+            impact = news.get('impact', '暂无')
+            meaning = news.get('meaning', '暂无')
+            credibility = news.get('credibility', '低')
             
-            if any(k in title for k in ['fed', 'rate', 'interest', 'federal reserve']):
-                impact = "美联储政策预期变化，影响市场流动性"
-                btc_meaning = "若美联储偏鹰，BTC可能承压"
-            elif any(k in title for k in ['sec', 'regulation', 'approval']):
-                impact = "监管政策变化，影响市场预期"
-                btc_meaning = "需关注监管动向"
-            elif any(k in title for k in ['ban', 'china', 'restrict']):
-                impact = "潜在利空消息"
-                btc_meaning = "注意短期风险"
-            else:
-                impact = "常规新闻，关注市场反应"
-                btc_meaning = "暂时影响有限"
-            
-            print(f"   - 核心内容：{impact}")
-            print(f"   - 对BTC/量化策略的意义：{btc_meaning}")
-            print(f"   - 来源：{news.get('source', news.get('credibility', '未知'))}")
+            print(f"{i}. 新闻标题：{title}")
+            print(f"   - 核心内容：{content}")
+            print(f"   - 市场影响：{impact}")
+            print(f"   - 对BTC/量化策略的意义：{meaning}")
+            print(f"   - 来源可信度：{credibility}")
+            print()
+        
+        if len(news_list) > 3:
+            print(f"其余{len(news_list)-3}条略")
             print()
     else:
         print("- 当前新闻模块未获取到有效实时新闻，本次判断暂不纳入新闻因素")
