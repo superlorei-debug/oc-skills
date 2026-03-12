@@ -1,18 +1,46 @@
 #!/usr/bin/env python3
 """
-Commander - 主控汇总模块 V8
-支持简版/详细版两种模式
+Commander - 主控汇总模块 V9
+支持自然语言触发简版/详细版
 """
 import subprocess
 import json
 import os
 import sys
 from datetime import datetime, timedelta
+import re
 
 HISTORY_DIR = "data/history/commander"
 
-# 检测是否详细模式
-DETAIL_MODE = "--detail" in sys.argv or "-d" in sys.argv
+def detect_mode(user_input):
+    """根据用户输入判断模式"""
+    text = user_input.lower()
+    
+    # 检测部分展开（优先级最高）
+    expand_news = any(k in text for k in ["新闻", "看看新闻", "新闻模块"])
+    expand_macro = any(k in text for k in ["宏观", "理财", "家庭理财", "宏观模块"])
+    expand_quant = any(k in text for k in ["量化", "策略", "交易", "网格"])
+    
+    if expand_news and not expand_macro and not expand_quant:
+        return {"mode": "partial", "news": True, "macro": False, "quant": False}
+    elif expand_macro and not expand_news and not expand_quant:
+        return {"mode": "partial", "news": False, "macro": True, "quant": False}
+    elif expand_quant and not expand_news and not expand_macro:
+        return {"mode": "partial", "news": False, "macro": False, "quant": True}
+    
+    # 检测是否详细版
+    detail_keywords = [
+        "详细版", "详细看看", "展开新闻", "展开宏观", 
+        "详细", "展开", "完整", "具体", "具体看看", "具体内容", "全部"
+    ]
+    
+    has_detail_keyword = any(k in text for k in detail_keywords)
+    
+    if has_detail_keyword:
+        return {"mode": "detail"}
+    
+    # 默认简版
+    return {"mode": "simple"}
 
 def get_today_file():
     return f"{HISTORY_DIR}/{datetime.now().strftime('%Y-%m-%d')}.json"
@@ -143,7 +171,17 @@ def parse_macro():
     
     return data
 
-def main():
+def main(user_input=""):
+    # 检测模式
+    mode_info = detect_mode(user_input)
+    mode = mode_info["mode"]
+    
+    # 部分展开模式
+    partial = mode_info.get("mode") == "partial"
+    expand_news = mode_info.get("news", False)
+    expand_macro = mode_info.get("macro", False)
+    expand_quant = mode_info.get("quant", False)
+    
     q = parse_quant()
     n = parse_news()
     m = parse_macro()
@@ -164,12 +202,15 @@ def main():
     
     print("="*50)
     print("📋 今日总览")
-    if DETAIL_MODE:
-        print("(详细版)")
+    if mode == "detail" or partial:
+        print("(详细版)" if not partial else f"({['新闻','宏观','量化'][int(expand_macro)*2+int(expand_quant)]}详情)")
     print("="*50)
     print()
     
-    # 一、量化（始终详细）
+    # 判断是否展开量化（简版不展开）
+    show_quant_detail = (mode == "detail") or expand_quant
+    
+    # 一、量化
     print("一、量化策略")
     print(f"- 更新时间：{q['time']}")
     print(f"- 状态：{q['status']}")
@@ -180,7 +221,9 @@ def main():
     print(f"- 相比昨日：{risk_change}")
     print()
     
-    # 二、新闻（根据模式选择展示方式）
+    # 二、新闻
+    show_news_detail = (mode == "detail") or expand_news
+    
     print("二、新闻影响")
     print(f"- 更新时间：{n['time']}")
     print(f"- 当前模式：{n['mode']}")
@@ -189,8 +232,7 @@ def main():
     if n['mode'] in ["实时模式", "缓存模式"] and n.get("news"):
         news_list = n.get("news", [])
         
-        if DETAIL_MODE:
-            # 详细版：显示每条新闻的完整信息
+        if show_news_detail:
             for i, news in enumerate(news_list[:3], 1):
                 title = news.get('title', '无')[:60]
                 content = news.get('content', '暂无')
@@ -209,15 +251,8 @@ def main():
                 print(f"其余{len(news_list)-3}条略")
                 print()
         else:
-            # 简版：只显示摘要
             high_count = len([n for n in news_list if n.get('credibility') == '高'])
-            sources = list(set([n.get('title', '')[:20] for n in news_list[:2]]))
-            summary = f"{len(news_list)}条新闻"
-            if high_count > 0:
-                summary += f"（{high_count}条高可信）"
-            
-            print(f"- {summary}")
-            # 一句话总结
+            print(f"- {len(news_list)}条新闻（{high_count}条高可信）")
             if any("approval" in n.get('title','').lower() for n in news_list):
                 print("- 主要是银行申请审批，无重大政策变化")
             print()
@@ -225,13 +260,14 @@ def main():
         print("- 当前新闻模块未获取到有效实时新闻，本次判断暂不纳入新闻因素")
         print()
     
-    # 三、宏观（根据模式选择展示方式）
+    # 三、宏观
+    show_macro_detail = (mode == "detail") or expand_macro
+    
     print("三、宏观 / 家庭理财")
     print(f"- 更新时间：{m['time']}")
     print()
     
-    if DETAIL_MODE:
-        # 详细版
+    if show_macro_detail:
         print(f"1. 当前阶段：{m['phase']}")
         print()
         print(f"2. 当前阶段定义：{m['phase_def']}")
@@ -251,7 +287,6 @@ def main():
         print(f"7. 一句话建议：{m['advice']}")
         print()
     else:
-        # 简版
         print(f"- 当前阶段：{m['phase']}")
         print(f"- 家庭策略：{m['strategy']}")
         print(f"- 一句话建议：{m['advice']}")
@@ -305,4 +340,5 @@ def main():
     print("="*50)
 
 if __name__ == "__main__":
-    main()
+    user_input = sys.argv[1] if len(sys.argv) > 1 else ""
+    main(user_input)
