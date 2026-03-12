@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quant Analyst Strategy Input",
+  "description": "量化策略分析的输入参数",
+  "type": "object",
+  "required": ["strategy_name", "run_mode", "timestamp"],
+  "properties": {
+    "strategy_name": {
+      "type": "string",
+      "description": "策略名称",
+      "example": "grid_v2"
+    },
+    "run_mode": {
+      "type": "string",
+      "enum": ["paper", "live"],
+      "description": "运行模式",
+      "example": "paper"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "时间戳",
+      "example": "2026-03-12T20:30:00+08:00"
+    },
+    "capital_usdt": {
+      "type": "number",
+      "description": "本金 USDT",
+      "example": 5000
+    },
+    "symbols": {
+      "type": "array",
+      "description": "交易币种列表",
+      "items": {
+        "type": "object",
+        "properties": {
+          "symbol": {"type": "string"},
+          "allocated_capital": {"type": "number"},
+          "position_value": {"type": "number"},
+          "cash_remaining": {"type": "number"},
+          "unrealized_pnl": {"type": "number"},
+          "realized_pnl": {"type": "number"},
+          "drawdown": {"type": "number"},
+          "orders_today": {"type": "number"},
+          "filled_orders_today": {"type": "number"},
+          "avg_entry_price": {"type": "number"},
+          "last_price": {"type": "number"},
+          "fee_paid": {"type": "number"},
+          "slippage_est": {"type": "number"},
+          "inventory_layers_used": {"type": "number"},
+          "max_layers_allowed": {"type": "number"}
+        }
+      }
+    },
+    "portfolio_metrics": {
+      "type": "object",
+      "properties": {
+        "total_equity": {"type": "number"},
+        "daily_pnl": {"type": "number"},
+        "weekly_pnl": {"type": "number"},
+        "max_drawdown": {"type": "number"},
+        "capital_utilization": {"type": "number"},
+        "win_rate": {"type": "number"},
+        "profit_factor": {"type": "number"},
+        "fees_total": {"type": "number"},
+        "estimated_slippage_cost": {"type": "number"}
+      }
+    },
+    "risk_config": {
+      "type": "object",
+      "properties": {
+        "max_drawdown_limit": {"type": "number"},
+        "daily_loss_limit": {"type": "number"},
+        "single_symbol_cap_limit": {"type": "number"},
+        "capital_utilization_limit": {"type": "number"},
+        "max_inventory_layers_warning": {"type": "number"}
+      }
+    },
+    "market_context": {
+      "type": "object",
+      "properties": {
+        "volatility_regime": {"type": "string"},
+        "trend_state": {"type": "string"},
+        "major_event_risk": {"type": "boolean"},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

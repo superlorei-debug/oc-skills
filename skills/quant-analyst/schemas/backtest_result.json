@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quant Analyst Backtest Result",
+  "description": "量化策略回测/复盘结果",
+  "type": "object",
+  "required": ["strategy_name", "test_period", "initial_capital_usdt"],
+  "properties": {
+    "strategy_name": {
+      "type": "string"
+    },
+    "test_period": {
+      "type": "object",
+      "properties": {
+        "start": {"type": "string"},
+        "end": {"type": "string"}
+      }
+    },
+    "symbols": {
+     array",
+      " "type": "items": {"type": "string"}
+    },
+    "initial_capital_usdt": {"type": "number"},
+    "ending_capital_usdt": {"type": "number"},
+    "total_return": {"type": "number"},
+    "annualized_return": {"type": "number"},
+    "max_drawdown": {"type": "number"},
+    "sharpe": {"type": "number"},
+    "sortino": {"type": "number"},
+    "win_rate": {"type": "number"},
+    "profit_factor": {"type": "number"},
+    "total_trades": {"type": "number"},
+    "avg_trade_return": {"type": "number"},
+    "fees_total": {"type": "number"},
+    "slippage_total": {"type": "number"},
+    "best_symbol": {
+      "type": "object",
+      "properties": {
+        "symbol": {"type": "string"},
+        "return": {"type": "number"}
+      }
+    },
+    "worst_symbol": {
+      "type": "object",
+      "properties": {
+        "symbol": {"type": "string"},
+        "return": {"type": "number"}
+      }
+    },
+    "stress_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {"type": "string"},
+          "event": {"type": "string"},
+          "impact": {"type": "string"}
+        }
+      }
+    },
+    "conclusion_tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

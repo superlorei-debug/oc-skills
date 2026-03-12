@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Quant Analyst Signal Output",
+  "description": "量化策略分析输出 - 统一格式",
+  "type": "object",
+  "required": ["module", "status", "confidence", "summary"],
+  "properties": {
+    "module": {
+      "type": "string",
+      "const": "quant-analyst"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "warning", "critical"]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "summary": {
+      "type": "string",
+      "description": "一句话结论"
+    },
+    "key_points": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "关键观察点"
+    },
+    "risks": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "风险点"
+    },
+    "actions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "建议动作"
+    },
+    "next_check": {
+      "type": "string",
+      "description": "下次检查时间"
+    }
+  }
+}
