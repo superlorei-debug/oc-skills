@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财富管家驾驶舱</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* 导航 */
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav a { padding: 10px 20px; background: #fff; border-radius: 8px; text-decoration: none; color: #333; border: 1px solid #e0e0e0; }
+        .nav a.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        
+        /* 页面 */
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        /* 卡片 */
+        .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .card h2 { font-size: 16px; color: #666; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+        
+        /* 指标 */
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .metric { background: #f8fafc; padding: 16px; border-radius: 8px; }
+        .metric-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .metric-value { font-size: 24px; font-weight: 600; color: #1e293b; }
+        .metric-value.warning { color: #f59e0b; }
+        .metric-value.danger { color: #ef4444; }
+        .metric-value.success { color: #10b981; }
+        
+        /* 列表 */
+        .info-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-item:last-child { border: none; }
+        .info-label { color: #666; font-size: 14px; }
+        .info-value { font-weight: 500; color: #333; }
+        
+        /* 风险等级 */
+        .risk-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 500; }
+        .risk-low { background: #d1fae5; color: #065f46; }
+        .risk-medium { background: #fef3c7; color: #92400e; }
+        .risk-high { background: #fee2e2; color: #991b1b; }
+        
+        /* 新闻 */
+        .news-item { padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px; }
+        .news-title { font-weight: 500; margin-bottom: 8px; }
+        .news-meta { font-size: 12px; color: #888; margin-bottom: 8px; }
+        .news-impact { font-size: 14px; color: #555; background: #fff; padding: 8px; border-radius: 6px; }
+        
+        /* 更新 */
+        .update-time { text-align: right; color: #999; font-size: 12px; margin-top: 20px; }
+        
+        /* 趋势图占位 */
+        .chart-placeholder { height: 200px; background: #f8fafc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="margin-bottom: 20px;">📊 财富管家驾驶舱</h1>
+        
+        <div class="nav">
+            <a href="#" class="active" onclick="showPage('overview')">总览</a>
+            <a href="#" onclick="showPage('quant')">量化</a>
+            <a href="#" onclick="showPage('news')">新闻</a>
+            <a href="#" onclick="showPage('macro')">宏观</a>
+        </div>
+        
+        <!-- 总览页 -->
+        <div id="overview" class="page active">
+            <div class="card">
+                <h2>🚦 总体状态</h2>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">总体风险等级</div>
+                        <div class="metric-value danger" id="risk-level">高</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">今日建议</div>
+                        <div class="metric-value warning" id="overall-advice">暂时保守</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">量化状态</div>
+                        <div class="metric-value danger" id="quant-status">危险</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">今日盈亏</div>
+                        <div class="metric-value success" id="quant-pnl">+14.13 U</div>
+                    </div>
+                </div>
+                <div class="info-list" style="margin-top: 16px;">
+                    <div class="info-item"><span class="info-label">判断依据</span><span class="info-value" id="basis">以量化模块为主</span></div>
+                    <div class="info-item"><span class="info-label">新闻模式</span><span class="info-value" id="news-mode">实时模式</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📈 量化摘要</h2>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">库存层数</div>
+                        <div class="metric-value danger" id="grid-levels">6/6</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">资金利用率</div>
+                        <div class="metric-value" id="utilization">44.6%</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">BTC价格</div>
+                        <div class="metric-value" id="btc-price">$70,579</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">建议动作</div>
+                        <div class="metric-value warning" id="quant-action">暂停新开仓</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📰 新闻摘要</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">高可信新闻</span><span class="info-value" id="high-cred-news">3条</span></div>
+                    <div class="info-item"><span class="info-label">最重要新闻</span><span class="info-value" id="top-news">美联储银行审批...</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🏠 宏观摘要</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value">弱修复</span></div>
+                    <div class="info-item"><span class="info-label">家庭策略</span><span class="info-value">稳健偏保守</span></div>
+                    <div class="info-item"><span class="info-label">一句话建议</span><span class="info-value">先求稳，保留安全垫</span></div>
+                </div>
+            </div>
+            
+            <div class="update-time">最后更新：<span id="update-time">2026-03-12 18:00</span></div>
+        </div>
+        
+        <!-- 量化页 -->
+        <div id="quant" class="page">
+            <div class="card">
+                <h2>📊 量化详情</h2>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">当前价格</div><div class="metric-value" id="q-price">$70,579</div></div>
+                    <div class="metric"><div class="metric-label">当前持仓</div><div class="metric-value" id="q-position">0.0316 BTC</div></div>
+                    <div class="metric"><div class="metric-label">资金利用率</div><div class="metric-value" id="q-util">44.6%</div></div>
+                    <div class="metric"><div class="metric-label">库存层数</div><div class="metric-value danger" id="q-levels">6/6</div></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>💰 资金情况</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">策略总U数</span><span class="info-value">5000 U</span></div>
+                    <div class="info-item"><span class="info-label">已持仓占用</span><span class="info-value">2232 U</span></div>
+                    <div class="info-item"><span class="info-label">剩余U数</span><span class="info-value">2768 U</span></div>
+                    <div class="info-item"><span class="info-label">挂单数量</span><span class="info-value">6单</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📈 盈亏情况</h2>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">今日盈亏</div><div class="metric-value success">+14.13 U</div></div>
+                    <div class="metric"><div class="metric-label">昨日盈亏</div><div class="metric-value">暂无数据</div></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>⚠️ 风险提示</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">当前状态</span><span class="info-value danger">危险</span></div>
+                    <div class="info-item"><span class="info-label">风险原因</span><span class="info-value">库存层数6已打满</span></div>
+                    <div class="info-item"><span class="info-label">建议动作</span><span class="info-value warning">立即暂停新开仓</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📉 趋势（开发中）</h2>
+                <div class="chart-placeholder">趋势图表待开发</div>
+            </div>
+            
+            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+        </div>
+        
+        <!-- 新闻页 -->
+        <div id="news" class="page">
+            <div class="card">
+                <h2>📰 新闻概览</h2>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">当前模式</div><div class="metric-value">实时模式</div></div>
+                    <div class="metric"><div class="metric-label">今日新闻</div><div class="metric-value">3条</div></div>
+                    <div class="metric"><div class="metric-label">高可信</div><div class="metric-value">3条</div></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📄 新闻详情</h2>
+                <div class="news-item">
+                    <div class="news-title">1. Federal Reserve Board announces approval of application by Associated Banc-Corp</div>
+                    <div class="news-meta">时间：2026-03-11 | 来源：Federal Reserve | 可信度：高</div>
+                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化，可能影响全球流动性<br>对BTC/量化策略的意义：若偏鹰派，BTC可能承压</div>
+                </div>
+                <div class="news-item">
+                    <div class="news-title">2. Federal Reserve Board announces approval of application by FirstSun Capital Bancorp</div>
+                    <div class="news-meta">时间：2026-03-11 | 来源：Federal Reserve | 可信度：高</div>
+                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化，可能影响全球流动性</div>
+                </div>
+                <div class="news-item">
+                    <div class="news-title">3. Federal Reserve Board announces termination of enforcement actions</div>
+                    <div class="news-meta">时间：2026-03-10 | 来源：Federal Reserve | 可信度：高</div>
+                    <div class="news-impact">核心内容：美联储政策相关消息<br>市场影响：美联储政策预期变化</div>
+                </div>
+            </div>
+            
+            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+        </div>
+        
+        <!-- 宏观页 -->
+        <div id="macro" class="page">
+            <div class="card">
+                <h2>📊 宏观阶段</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">当前阶段</span><span class="info-value">弱修复</span></div>
+                    <div class="info-item"><span class="info-label">阶段定义</span><span class="info-value">经济在恢复，但恢复力度还不强</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📋 判断依据</h2>
+                <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <ul style="margin-left: 20px; line-height: 2;">
+                        <li>消费恢复不均衡</li>
+                        <li>就业预期仍偏谨慎</li>
+                        <li>居民风险偏好还不高</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🏠 家庭理财策略</h2>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">策略</span><span class="info-value">稳健偏保守</span></div>
+                    <div class="info-item"><span class="info-label">策略定义</span><span class="info-value">家庭资金应以现金、定存、稳健类资产为主</span></div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>💡 建议</h2>
+                <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <ul style="margin-left: 20px; line-height: 2;">
+                        <li>先保留流动性</li>
+                        <li>不要激进加大高风险配置</li>
+                        <li>可以适度增加稳健配置</li>
+                        <li>控制整体风险敞口</li>
+                    </ul>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px; font-weight: 500;">
+                    一句话建议：当前先求稳，保留安全垫，再逐步优化配置。
+                </div>
+            </div>
+            
+            <div class="update-time">最后更新：<span>2026-03-12 18:00</span></div>
+        </div>
+    </div>
+    
+    <script>
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // 刷新数据
+        function refreshData() {
+            fetch('data/dashboard.json')
+                .then(r => r.json())
+                .then(data => {
+                    // 更新数据
+                    console.log('数据已刷新:', data);
+                })
+                .catch(e => console.log('数据加载失败，使用默认数据'));
+        }
+        
+        // 每分钟刷新
+        setInterval(refreshData, 60000);
+    </script>
+</body>
+</html>
