@@ -488,14 +488,17 @@ def format_daily_detail_report(report):
     lines.append("二、量化交易")
     lines.append("-" * 40)
     
-    freshness_emoji = {"fresh": "✅", "stale": "⚠️", "expired": "🔴", "invalid": "❌"}
-    lines.append(f"├─ 数据新鲜度：{freshness_emoji.get(freshness.get('freshness', 'unknown'), '❓')} {freshness.get('freshness', 'unknown')}")
+    freshness_val = freshness.get('freshness', 'unknown')
+    freshness_cn = {"fresh": "正常", "stale": "过期", "expired": "过期", "invalid": "无效", "unknown": "未知"}
+    freshness_emoji = {"fresh": "✅", "stale": "⚠️", "expired": "🔴", "invalid": "❌", "unknown": "❓"}
+    lines.append(f"├─ 数据新鲜度：{freshness_emoji.get(freshness_val, '❓')} {freshness_cn.get(freshness_val, '未知')}")
     lines.append(f"├─ 数据有效性：{'有效' if freshness.get('data_validity') else '无效'}")
-    lines.append(f"├─ 最后成功同步：{freshness.get('last_sync_time', 'N/A')}")
+    sync_time = freshness.get('last_sync_time')
+    lines.append(f"├─ 最后成功同步：{sync_time if sync_time else '暂无成功同步记录'}")
     if freshness.get('age_minutes') is not None:
         lines.append(f"├─ 距最后同步：{freshness.get('age_minutes')} 分钟")
     else:
-        lines.append(f"├─ 距最后同步：N/A")
+        lines.append(f"├─ 距最后同步：无法计算")
     
     if q.get("data_validity"):
         d = q.get("data", {})
@@ -519,7 +522,7 @@ def format_daily_detail_report(report):
     if n.get("module_execution_status") == STATUS_EXECUTED:
         lines.append(f"├─ 状态：已执行")
         lines.append(f"├─ 模式：{n.get('fetch_mode', 'N/A')}")
-        lines.append(f"└─ 新闻数量：{n.get('article_count', 0)} 条")
+        lines.append(f"└─ 新闻数量：{n.get('article_count') if n.get('article_count') else '暂无关键新闻'} 条")
     else:
         lines.append(f"└─ 📝 暂无关键更新")
     
@@ -542,8 +545,8 @@ def format_daily_detail_report(report):
     lines.append("五、系统运行")
     lines.append("-" * 40)
     lines.append(f"├─ Bot 进程：{'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
-    lines.append(f"├─ 目标模式：{r.get('target_mode', 'N/A')}")
-    lines.append(f"├─ 实际模式：{r.get('actual_mode', 'N/A')}")
+    lines.append(f"├─ 目标模式：{r.get('target_mode', '不适用') or '不适用'}")
+    lines.append(f"├─ 实际模式：{r.get('actual_mode', '不适用') or '不适用'}")
     lines.append(f"├─ Demo API：{'✅ 正常' if s.get('demo_api', {}).get('connected') else '❌ 异常'}")
     
     if r.get("degrade_reason"):
@@ -675,7 +678,7 @@ def format_text_report(report):
     if n['module_execution_status'] == STATUS_EXECUTED:
         lines.append(f"├─ 模块执行状态：已执行")
         lines.append(f"├─ 获取模式：{n['fetch_mode']}")
-        lines.append(f"└─ 新闻数量：{n['article_count']}条" if n['article_count'] else f"└─ 新闻数量：0条")
+        lines.append(f"└─ 新闻数量：{n.get('article_count', 0) if n.get('article_count') else '暂无关键新闻'} 条")
     elif n['module_execution_status'] == STATUS_NO_UPDATE:
         lines.append(f"└─ 📝 暂无新闻更新")
     else:
