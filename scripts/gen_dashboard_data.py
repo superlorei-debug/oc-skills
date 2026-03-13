@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-生成看板数据 V4
-补挂单价格、资金拆分
+生成看板数据 V5
+支持新闻模块V3新结构
 """
 import subprocess
 import json
@@ -47,11 +47,9 @@ quant_data = {
 
 in_risk = False
 in_action = False
-in_prices = False
 
 for line in quant_out.split("\n"):
     line_stripped = line.strip()
-    
     if "当前价格：" in line:
         val = line.split("：")[-1].replace("$","").replace(",","").strip()
         try:
@@ -135,31 +133,6 @@ for line in quant_out.split("\n"):
     elif in_action and line_stripped.startswith("-"):
         quant_data["top_action"] = line_stripped.replace("-","").strip()
         in_action = False
-    # 挂单价格
-    elif re.match(r"^\s*\d+[.\d]*\s*$", line_stripped) and "挂单" not in line:
-        try:
-            price = float(line_stripped.replace(",",""))
-            if price > 0:
-                quant_data["open_orders_prices"].append(price)
-        except:
-            pass
-
-# 单独解析挂单价格
-price_pattern = r"(\d+[\d,]*)\s*$"
-for line in quant_out.split("\n"):
-    if "买入挂单价格：" in line:
-        in_prices = True
-    elif in_prices:
-        match = re.search(price_pattern, line)
-        if match:
-            try:
-                price = float(match.group(1).replace(",",""))
-                if price > 0 and price not in quant_data["open_orders_prices"]:
-                    quant_data["open_orders_prices"].append(price)
-            except:
-                pass
-        elif "今日盈亏" in line or "资金利用率" in line:
-            in_prices = False
 
 order_match = re.search(r"买入挂单数量：(\d+)", quant_out)
 if order_match:
@@ -168,63 +141,63 @@ if order_match:
 with open(f"{DATA_DIR}/quant_report.json", "w") as f:
     json.dump(quant_data, f, ensure_ascii=False, indent=2)
 
-# 2. 新闻数据
+# 2. 新闻数据 - V3新结构
 print("生成新闻数据...")
 news_out = run_cmd("scripts/news_report.py")
 
 news_data = {
     "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     "fetch_mode": "none",
-    "total_count": 0,
-    "high_cred_count": 0,
-    "articles": []
+    "today_news_count": 0,
+    "high_cred_today_count": 0,
+    "risk_level": "normal",
+    "summary": "今日暂无重要新闻",
+    "today_news": [],
+    "recent_news": []
 }
 
-mode_match = re.search(r"当前模式：(\S+)", news_out)
-if mode_match:
-    news_data["fetch_mode"] = mode_match.group(1)
+# 解析输出
+for line in news_out.split("\n"):
+    line_stripped = line.strip()
+    if "当前模式：" in line:
+        news_data["fetch_mode"] = line.split("：")[-1].strip()
+    elif "今日新闻：" in line:
+        val = line.split("：")[-1].replace("条","").strip()
+        try:
+            news_data["today_news_count"] = int(val)
+        except:
+            pass
+    elif "高可信今日：" in line or "高可信：" in line:
+        val = line.split("：")[-1].replace("条","").strip()
+        try:
+            news_data["high_cred_today_count"] = int(val)
+        except:
+            pass
+    elif "风险等级：" in line:
+        risk = line.split("：")[-1].strip()
+        news_data["risk_level"] = risk
+    elif "摘要：" in line:
+        news_data["summary"] = line.split("：")[-1].strip()
 
+# 解析新闻列表
 current_article = {}
 in_article = False
 
 for line in news_out.split("\n"):
     line_stripped = line.strip()
-    # 解析新闻块开始，如 "--- 1. Federal Reserve (美联储) ---"
-    if "---" in line_stripped and "新闻" not in line_stripped:
+    if "---" in line_stripped and "今日" in line_stripped:
         if current_article and current_article.get("title"):
-            news_data["articles"].append(current_article)
+            news_data["today_news"].append(current_article)
         current_article = {}
         in_article = True
-        # 从分隔行提取来源，如 "--- 1. Federal Reserve (美联储) ---"
-        source_match = re.search(r"---\s*\d+\.\s*([^-(]+)", line_stripped)
-        if source_match:
-            current_article["source"] = source_match.group(1).strip()
     elif in_article:
         if "标题：" in line:
             current_article["title"] = line.split("：", 1)[-1].strip()
-        elif "来源可信度：" in line:
-            current_article["credibility"] = line.split("：")[-1].strip()
-        elif "时间：" in line and "更新" not in line:
-            current_article["published_at"] = line.split("：")[-1].strip()
-        elif "核心内容：" in line:
-            current_article["core_content"] = line.split("：", 1)[-1].strip()
-        elif "市场影响：" in line:
-            current_article["market_impact"] = line.split("：", 1)[-1].strip()
-        elif "对BTC" in line:
-            current_article["btc_strategy_impact"] = line.split("：", 1)[-1].strip()
-        elif "来源：" in line and "可信度" not in line:
-            if not current_article.get("source"):
-                current_article["source"] = line.split("：")[-1].strip()
-        elif "链接：" in line:
-            url = line.split("：")[-1].strip()
-            if url and url != "":
-                current_article["url"] = url
+        elif "来源：" in line:
+            current_article["source"] = line.split("：")[-1].strip()
 
 if current_article and current_article.get("title"):
-    news_data["articles"].append(current_article)
-
-news_data["total_count"] = len(news_data["articles"])
-news_data["high_cred_count"] = len([a for a in news_data["articles"] if a.get("credibility") == "高"])
+    news_data["today_news"].append(current_article)
 
 with open(f"{DATA_DIR}/news_report.json", "w") as f:
     json.dump(news_data, f, ensure_ascii=False, indent=2)
@@ -278,7 +251,7 @@ if quant_data.get("status") == "critical":
 elif quant_data.get("status") == "warning":
     risk_score += 2
 
-if news_data.get("high_cred_count", 0) > 0:
+if news_data.get("risk_level") == "warning":
     risk_score += 1
 
 if risk_score >= 3:
@@ -293,7 +266,7 @@ else:
 
 if quant_data.get("status") == "critical":
     judgement_basis = "以量化模块为主"
-elif news_data.get("high_cred_count", 0) > 0:
+elif news_data.get("risk_level") == "warning":
     judgement_basis = "以新闻模块为主"
 elif macro_data.get("family_strategy") in ["保守", "稳健偏保守"]:
     judgement_basis = "以宏观模块为主"
