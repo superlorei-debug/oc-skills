@@ -224,24 +224,18 @@ def analyze():
 
 
 def main():
-    print("="*50)
-    print("📈 Quant Analyst - 量化策略分析")
-    print("="*50)
-    print()
+    import sys
     
     result = analyze()
     
-    # 输出 JSON
-    print(json.dumps(result, indent=2, ensure_ascii=False))
-    print()
-    print("="*50)
+    # 只输出 JSON 到 stdout，错误信息到 stderr
+    print(json.dumps(result, indent=2, ensure_ascii=False), file=sys.stdout)
     
     # 保存到文件
     output_file = "/Users/mac/.openclaw/workspace/openclaw-project/data/latest/quant_report.json"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
-    print(f"已保存到: {output_file}")
 
 
 if __name__ == "__main__":

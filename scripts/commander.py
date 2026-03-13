@@ -1,343 +1,399 @@
 #!/usr/bin/env python3
 """
-Commander - 主控汇总模块 V9
-支持自然语言触发简版/详细版
+Commander - 主控汇总模块 V10
+统一汇总格式，固定栏目输出
 """
 import subprocess
 import json
 import os
 import sys
 from datetime import datetime, timedelta
-import re
 
 HISTORY_DIR = "data/history/commander"
+
+# 执行状态枚举
+STATUS_EXECUTED = "已执行"
+STATUS_NO_UPDATE = "无更新"
+STATUS_FAILED = "执行失败"
+STATUS_NOT_CONNECTED = "未接入"
+
 
 def detect_mode(user_input):
     """根据用户输入判断模式"""
     text = user_input.lower()
     
-    # 检测部分展开（优先级最高）
-    expand_news = any(k in text for k in ["新闻", "看看新闻", "新闻模块"])
-    expand_macro = any(k in text for k in ["宏观", "理财", "家庭理财", "宏观模块"])
-    expand_quant = any(k in text for k in ["量化", "策略", "交易", "网格"])
+    # 检测详细版
+    detail_keywords = ["详细版", "详细看看", "展开", "完整", "具体"]
+    if any(k in text for k in detail_keywords):
+        return "detail"
     
-    if expand_news and not expand_macro and not expand_quant:
-        return {"mode": "partial", "news": True, "macro": False, "quant": False}
-    elif expand_macro and not expand_news and not expand_quant:
-        return {"mode": "partial", "news": False, "macro": True, "quant": False}
-    elif expand_quant and not expand_news and not expand_macro:
-        return {"mode": "partial", "news": False, "macro": False, "quant": True}
-    
-    # 检测是否详细版
-    detail_keywords = [
-        "详细版", "详细看看", "展开新闻", "展开宏观", 
-        "详细", "展开", "完整", "具体", "具体看看", "具体内容", "全部"
-    ]
-    
-    has_detail_keyword = any(k in text for k in detail_keywords)
-    
-    if has_detail_keyword:
-        return {"mode": "detail"}
-    
-    # 默认简版
-    return {"mode": "simple"}
+    return "simple"
+
 
 def get_today_file():
     return f"{HISTORY_DIR}/{datetime.now().strftime('%Y-%m-%d')}.json"
 
-def get_yesterday_file():
-    yesterday = datetime.now() - timedelta(days=1)
-    return f"{HISTORY_DIR}/{yesterday.strftime('%Y-%m-%d')}.json"
-
-def save_daily_summary(quant_status, news_mode, macro_phase, overall, pnl):
-    os.makedirs(HISTORY_DIR, exist_ok=True)
-    data = {
-        "date": datetime.now().strftime('%Y-%m-%d'),
-        "quant_status": quant_status,
-        "quant_pnl": pnl,
-        "news_mode": news_mode,
-        "macro_phase": macro_phase,
-        "overall": overall,
-    }
-    with open(get_today_file(), "w") as f:
-        json.dump(data, f)
-
-def load_yesterday():
-    f = get_yesterday_file()
-    if os.path.exists(f):
-        with open(f) as f:
-            return json.load(f)
-    return None
 
 def run_cmd(path):
+    """运行脚本并返回输出"""
     try:
-        r = subprocess.run(["python3", path], capture_output=True, text=True, timeout=15)
-        return r.stdout, r.stderr
-    except: return "", ""
+        r = subprocess.run(
+            ["python3", path], 
+            capture_output=True, 
+            text=True, 
+            timeout=15,
+            cwd="/Users/mac/.openclaw/workspace/openclaw-project"
+        )
+        return r.stdout, r.stderr, r.returncode
+    except Exception as e:
+        return "", str(e), -1
+
+
+def check_bot_status():
+    """检查 Bot 运行状态"""
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["ps", "aux"], 
+            capture_output=True, 
+            text=True
+        )
+        for line in r.stdout.split("\n"):
+            if "bot.py" in line and "grep" not in line:
+                # 提取 PID
+                parts = line.split()
+                if len(parts) > 1:
+                    return {
+                        "running": True,
+                        "pid": parts[1],
+                        "status": "运行中"
+                    }
+        return {
+            "running": False,
+            "pid": None,
+            "status": "未运行"
+        }
+    except:
+        return {
+            "running": False,
+            "pid": None,
+            "status": "未知"
+        }
+
+
+def check_demo_api():
+    """检查 Demo API 连接状态"""
+    import requests
+    try:
+        resp = requests.get("https://demo-api.binance.com/api/v3/ping", timeout=5)
+        if resp.status_code == 200:
+            return {"connected": True, "status": "正常"}
+    except:
+        pass
+    return {"connected": False, "status": "异常"}
+
 
 def parse_quant():
-    out, _ = run_cmd("scripts/quant_report.py")
-    data = {"status": "未知", "pnl": "0", "util": "0%", "risk": "无", "action": "保持观察", "time": datetime.now().strftime('%H:%M')}
-    in_risk = False
-    in_action = False
-    for line in out.split("\n"):
-        if "当前状态：" in line:
-            if "预警" in line: data["status"] = "预警"
-            elif "危险" in line: data["status"] = "危险"
-            else: data["status"] = "正常"
-        if "今日盈亏：" in line:
-            data["pnl"] = line.split("：")[-1].replace("U","").replace("+","").strip()
-        if "资金利用率：" in line:
-            data["util"] = line.split("：")[-1].strip()
-        if "风险提示：" in line:
-            in_risk = True
-            continue
-        if in_risk and line.strip().startswith("-"):
-            data["risk"] = line.strip().replace("-","").strip()
-            in_risk = False
-        if "建议动作：" in line:
-            in_action = True
-            continue
-        if in_action and line.strip().startswith("-"):
-            data["action"] = line.strip().replace("-","").strip()
-            in_action = False
-    return data
+    """解析量化模块输出"""
+    out, err, code = run_cmd("scripts/quant_report.py")
+    
+    result = {
+        "status": STATUS_NO_UPDATE,
+        "status_text": "无更新",
+        "price": "0",
+        "balance_usdt": "0",
+        "position_btc": "0",
+        "layers_used": "0",
+        "layers_limit": "6",
+        "utilization": "0%",
+        "pnl": "0",
+        "orders_count": "0",
+        "risk": "无",
+        "action": "保持观察",
+        "time": datetime.now().strftime('%H:%M'),
+        "error": None,
+        "data_source": "未知",
+    }
+    
+    if code != 0 or err:
+        result["status"] = STATUS_FAILED
+        result["status_text"] = "执行失败"
+        result["error"] = err[:100] if err else "未知错误"
+        return result
+    
+    # 尝试解析 JSON
+    try:
+        # 查找 JSON 输出
+        lines = out.split("\n")
+        json_start = -1
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        
+        if json_start >= 0:
+            json_str = "\n".join(lines[json_start:])
+            data = json.loads(json_str)
+            
+            result["status"] = STATUS_EXECUTED
+            result["status_text"] = "已执行"
+            result["price"] = str(data.get("price_usd", 0))
+            result["balance_usdt"] = str(data.get("total_u", 0))
+            result["position_btc"] = str(data.get("position_btc", 0))
+            result["layers_used"] = str(data.get("inventory_layers_used", 0))
+            result["layers_limit"] = str(data.get("inventory_layers_limit", 6))
+            result["utilization"] = str(data.get("capital_utilization_pct", 0)) + "%"
+            result["orders_count"] = str(data.get("open_orders_count", 0))
+            result["data_source"] = data.get("data_source", "未知")
+            
+            # 状态判断
+            status = data.get("status", "ok")
+            if status == "critical":
+                result["status_text"] = "危险"
+            elif status == "warning":
+                result["status_text"] = "预警"
+            else:
+                result["status_text"] = "正常"
+            
+            result["risk"] = data.get("risk_reason", "暂无")
+            result["action"] = data.get("top_action", "保持观察")
+            
+    except Exception as e:
+        result["status"] = STATUS_FAILED
+        result["status_text"] = "解析失败"
+        result["error"] = str(e)[:100]
+    
+    return result
+
 
 def parse_news():
-    out, _ = run_cmd("scripts/news_report.py")
-    data = {"mode": "无数据", "news": [], "time": datetime.now().strftime('%H:%M')}
+    """解析新闻模块输出"""
+    out, err, code = run_cmd("scripts/news_report.py")
     
-    for line in out.split("\n"):
-        if "当前模式：" in line:
-            data["mode"] = line.split("：")[-1].strip()
-        if "更新时间：" in line and "当前模式" not in line:
-            data["time"] = line.split("：")[-1].strip()[:5]
+    result = {
+        "status": STATUS_NOT_CONNECTED,
+        "status_text": "未接入",
+        "mode": "无",
+        "count": "0",
+        "articles": [],
+        "time": datetime.now().strftime('%H:%M'),
+        "error": None,
+    }
     
-    current_news = {}
-    in_news = False
-    for line in out.split("\n"):
-        line = line.strip()
-        if "---" in line and "新闻" not in line:
-            if current_news and current_news.get("title"):
-                data["news"].append(current_news)
-            current_news = {}
-            in_news = True
-            continue
-        if in_news:
-            if "标题：" in line:
-                current_news["title"] = line.split("：", 1)[-1].strip()
-            elif "来源可信度：" in line:
-                current_news["credibility"] = line.split("：")[-1].strip()
-            elif "时间：" in line and "更新" not in line:
-                current_news["date"] = line.split("：")[-1].strip()
-            elif "核心内容：" in line:
-                current_news["content"] = line.split("：", 1)[-1].strip()
-            elif "市场影响：" in line:
-                current_news["impact"] = line.split("：", 1)[-1].strip()
-            elif "对BTC/量化策略的意义：" in line:
-                current_news["meaning"] = line.split("：", 1)[-1].strip()
+    if code != 0 or err:
+        result["status"] = STATUS_FAILED
+        result["status_text"] = "执行失败"
+        result["error"] = err[:100] if err else "未知错误"
+        return result
     
-    if current_news and current_news.get("title"):
-        data["news"].append(current_news)
+    # 简单解析
+    if "实时模式" in out:
+        result["status"] = STATUS_EXECUTED
+        result["status_text"] = "已执行"
+        result["mode"] = "实时"
+    elif "缓存模式" in out:
+        result["status"] = STATUS_EXECUTED
+        result["status_text"] = "已执行(缓存)"
+        result["mode"] = "缓存"
+    else:
+        result["status"] = STATUS_NO_UPDATE
+        result["status_text"] = "无更新"
+        result["mode"] = "无"
     
-    return data
+    return result
+
 
 def parse_macro():
-    out, _ = run_cmd("scripts/macro_report.py")
-    data = {"phase": "未知", "phase_def": "", "reasons": [], "strategy": "稳健", "strategy_def": "", "implications": [], "advice": "无", "time": datetime.now().strftime('%H:%M')}
-    current_section = ""
-    for line in out.split("\n"):
-        line = line.strip()
-        if "当前阶段：" in line and "定义" not in line:
-            data["phase"] = line.split("：")[-1].strip()
-        elif "当前阶段定义：" in line:
-            data["phase_def"] = line.split("：")[-1].strip()
-        elif "为什么是这个阶段：" in line:
-            current_section = "reasons"
-        elif current_section == "reasons" and line.startswith("-"):
-            data["reasons"].append(line.replace("-", "").strip())
-        elif "家庭策略：" in line and "定义" not in line:
-            data["strategy"] = line.split("：")[-1].strip()
-        elif "家庭策略定义：" in line:
-            data["strategy_def"] = line.split("：")[-1].strip()
-        elif "对我现在意味着什么：" in line:
-            current_section = "implications"
-        elif current_section == "implications" and line.startswith("-"):
-            data["implications"].append(line.replace("-", "").strip())
-        elif "一句话建议：" in line:
-            data["advice"] = line.split("：")[-1].strip()
-        elif "更新时间：" in line:
-            data["time"] = line.split("：")[-1].strip()[:5]
+    """解析宏观模块输出"""
+    out, err, code = run_cmd("scripts/macro_report.py")
     
-    return data
+    result = {
+        "status": STATUS_NOT_CONNECTED,
+        "status_text": "未接入",
+        "phase": "未知",
+        "strategy": "未知",
+        "advice": "暂无建议",
+        "time": datetime.now().strftime('%H:%M'),
+        "error": None,
+    }
+    
+    if code != 0 or err:
+        result["status"] = STATUS_FAILED
+        result["status_text"] = "执行失败"
+        result["error"] = err[:100] if err else "未知错误"
+        return result
+    
+    if "当前阶段" in out:
+        result["status"] = STATUS_EXECUTED
+        result["status_text"] = "已执行"
+        
+        for line in out.split("\n"):
+            if "当前阶段：" in line and "定义" not in line:
+                result["phase"] = line.split("：")[-1].strip()
+            elif "家庭策略：" in line and "定义" not in line:
+                result["strategy"] = line.split("：")[-1].strip()
+            elif "一句话建议：" in line:
+                result["advice"] = line.split("：")[-1].strip()
+    else:
+        result["status"] = STATUS_NO_UPDATE
+        result["status_text"] = "无更新"
+    
+    return result
+
+
+def format_output(quant, news, macro, bot_status, demo_status, is_detail=False):
+    """统一格式化输出"""
+    
+    lines = []
+    
+    # ========== 标题 ==========
+    lines.append("=" * 60)
+    lines.append("📋 今日总览")
+    lines.append("=" * 60)
+    lines.append(f"📅 更新时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+    
+    # ========== 一、量化交易 ==========
+    lines.append("一、量化交易")
+    lines.append("-" * 40)
+    lines.append(f"├─ 执行状态：{quant['status_text']}")
+    lines.append(f"├─ 更新时间：{quant['time']}")
+    lines.append(f"├─ 数据来源：{quant['data_source']}")
+    
+    if quant['status'] == STATUS_EXECUTED:
+        lines.append(f"├─ BTC 价格：${quant['price']}")
+        lines.append(f"├─ USDT 余额：{quant['balance_usdt']}")
+        lines.append(f"├─ BTC 持仓：{quant['position_btc']}")
+        lines.append(f"├─ 库存层数：{quant['layers_used']}/{quant['layers_limit']}")
+        lines.append(f"├─ 资金利用率：{quant['utilization']}")
+        lines.append(f"├─ 挂单数量：{quant['orders_count']}单")
+        lines.append(f"├─ 当前状态：{quant['status_text']}")
+        lines.append(f"├─ 风险提示：{quant['risk']}")
+        lines.append(f"└─ 建议动作：{quant['action']}")
+    elif quant['status'] == STATUS_FAILED:
+        lines.append(f"└─ ❌ 错误：{quant.get('error', '未知错误')}")
+    else:
+        lines.append(f"└─ 暂无数据")
+    
+    lines.append("")
+    
+    # ========== 二、新闻与地缘 ==========
+    lines.append("二、新闻与地缘")
+    lines.append("-" * 40)
+    lines.append(f"├─ 执行状态：{news['status_text']}")
+    lines.append(f"├─ 更新时间：{news['time']}")
+    
+    if news['status'] in [STATUS_EXECUTED, "已执行(缓存)"]:
+        lines.append(f"├─ 获取模式：{news['mode']}")
+        lines.append(f"└─ 新闻数量：{news['count']}条")
+    elif news['status'] == STATUS_FAILED:
+        lines.append(f"└─ ❌ 错误：{news.get('error', '未知错误')}")
+    else:
+        lines.append(f"└─ 📝 暂无新闻更新")
+    
+    lines.append("")
+    
+    # ========== 三、宏观环境 ==========
+    lines.append("三、宏观环境")
+    lines.append("-" * 40)
+    lines.append(f"├─ 执行状态：{macro['status_text']}")
+    lines.append(f"├─ 更新时间：{macro['time']}")
+    
+    if macro['status'] == STATUS_EXECUTED:
+        lines.append(f"├─ 当前阶段：{macro['phase']}")
+        lines.append(f"├─ 家庭策略：{macro['strategy']}")
+        lines.append(f"└─ 一句话建议：{macro['advice']}")
+    elif macro['status'] == STATUS_FAILED:
+        lines.append(f"└─ ❌ 错误：{macro.get('error', '未知错误')}")
+    else:
+        lines.append(f"└─ 📝 暂无宏观更新")
+    
+    lines.append("")
+    
+    # ========== 四、系统状态 ==========
+    lines.append("四、系统状态")
+    lines.append("-" * 40)
+    
+    # Bot 状态
+    if bot_status['running']:
+        lines.append(f"├─ Bot 运行：✅ 运行中 (PID: {bot_status['pid']})")
+    else:
+        lines.append(f"├─ Bot 运行：❌ 未运行")
+    
+    # Demo API 状态
+    if demo_status['connected']:
+        lines.append(f"├─ Demo API：✅ {demo_status['status']}")
+    else:
+        lines.append(f"├─ Demo API：⚠️ {demo_status['status']} (降级运行)")
+    
+    # 执行模式
+    exec_mode = "binance_demo"  # 从 .env 读取
+    try:
+        with open("/tmp/binance-spot-grid-bot/.env") as f:
+            for line in f:
+                if "EXECUTION_MODE=" in line:
+                    exec_mode = line.split("=")[1].strip()
+    except:
+        pass
+    
+    if not demo_status['connected']:
+        lines.append(f"├─ 执行模式：{exec_mode} (已降级)")
+        lines.append(f"└─ ⚠️ 系统运行状态：降级运行（Demo API 异常）")
+    else:
+        lines.append(f"└─ 执行模式：{exec_mode}")
+    
+    lines.append("")
+    
+    # ========== 五、今日建议 ==========
+    lines.append("五、今日建议")
+    lines.append("-" * 40)
+    
+    # 综合判断
+    if not demo_status['connected']:
+        lines.append("├─ 总体风险：⚠️ 中等")
+        lines.append("├─ 原因：Demo API 异常，Bot 已降级运行")
+        lines.append("├─ 建议：")
+        lines.append("│    - 关注 Demo API 恢复情况")
+        lines.append("│    - 当前交易为模拟数据，非真实执行")
+        lines.append("│    - 如需真实交易，请等待 API 恢复后重启")
+        lines.append("└─ 后续行动：等待 Demo API 恢复")
+    elif quant['status_text'] == "危险":
+        lines.append("├─ 总体风险：🔴 高")
+        lines.append("├─ 原因：量化模块状态危险")
+        lines.append(f"└─ 建议：{quant['action']}")
+    elif quant['status_text'] == "预警":
+        lines.append("├─ 总体风险：🟡 中等")
+        lines.append("├─ 原因：量化模块状态预警")
+        lines.append(f"└─ 建议：{quant['action']}")
+    else:
+        lines.append("├─ 总体风险：🟢 低")
+        lines.append("├─ 原因：各模块运行正常")
+        lines.append("└─ 建议：保持当前节奏，继续观察")
+    
+    lines.append("")
+    lines.append("=" * 60)
+    
+    return "\n".join(lines)
+
 
 def main(user_input=""):
     # 检测模式
-    mode_info = detect_mode(user_input)
-    mode = mode_info["mode"]
+    mode = detect_mode(user_input)
+    is_detail = (mode == "detail")
     
-    # 部分展开模式
-    partial = mode_info.get("mode") == "partial"
-    expand_news = mode_info.get("news", False)
-    expand_macro = mode_info.get("macro", False)
-    expand_quant = mode_info.get("quant", False)
+    # 获取各模块数据
+    print("🔄 正在获取数据...")
     
-    q = parse_quant()
-    n = parse_news()
-    m = parse_macro()
+    quant = parse_quant()
+    news = parse_news()
+    macro = parse_macro()
+    bot_status = check_bot_status()
+    demo_status = check_demo_api()
     
-    try:
-        pnl = float(q.get("pnl", "0"))
-        save_daily_summary(q.get("status"), n.get("mode"), m.get("phase"), "待定", pnl)
-    except: pass
-    
-    yesterday = load_yesterday()
-    if yesterday:
-        if yesterday.get("quant_status") != q.get("status"):
-            risk_change = "风险上升" if q.get("status") == "预警" else ("风险下降" if q.get("status") == "正常" else "风险上升")
-        else:
-            risk_change = "无明显变化"
-    else:
-        risk_change = "无昨日数据"
-    
-    print("="*50)
-    print("📋 今日总览")
-    if mode == "detail" or partial:
-        print("(详细版)" if not partial else f"({['新闻','宏观','量化'][int(expand_macro)*2+int(expand_quant)]}详情)")
-    print("="*50)
-    print()
-    
-    # 判断是否展开量化（简版不展开）
-    show_quant_detail = (mode == "detail") or expand_quant
-    
-    # 一、量化
-    print("一、量化策略")
-    print(f"- 更新时间：{q['time']}")
-    print(f"- 状态：{q['status']}")
-    print(f"- 今日盈亏：{q['pnl']} U")
-    print(f"- 资金利用率：{q['util']}")
-    print(f"- 风险提示：{q['risk']}")
-    print(f"- 建议动作：{q['action']}")
-    print(f"- 相比昨日：{risk_change}")
-    print()
-    
-    # 二、新闻
-    show_news_detail = (mode == "detail") or expand_news
-    
-    print("二、新闻影响")
-    print(f"- 更新时间：{n['time']}")
-    print(f"- 当前模式：{n['mode']}")
-    print()
-    
-    if n['mode'] in ["实时模式", "缓存模式"] and n.get("news"):
-        news_list = n.get("news", [])
-        
-        if show_news_detail:
-            for i, news in enumerate(news_list[:3], 1):
-                title = news.get('title', '无')[:60]
-                content = news.get('content', '暂无')
-                impact = news.get('impact', '暂无')
-                meaning = news.get('meaning', '暂无')
-                credibility = news.get('credibility', '低')
-                
-                print(f"{i}. 新闻标题：{title}")
-                print(f"   - 核心内容：{content}")
-                print(f"   - 市场影响：{impact}")
-                print(f"   - 对BTC/量化策略的意义：{meaning}")
-                print(f"   - 来源可信度：{credibility}")
-                print()
-            
-            if len(news_list) > 3:
-                print(f"其余{len(news_list)-3}条略")
-                print()
-        else:
-            high_count = len([n for n in news_list if n.get('credibility') == '高'])
-            print(f"- {len(news_list)}条新闻（{high_count}条高可信）")
-            if any("approval" in n.get('title','').lower() for n in news_list):
-                print("- 主要是银行申请审批，无重大政策变化")
-            print()
-    else:
-        print("- 当前新闻模块未获取到有效实时新闻，本次判断暂不纳入新闻因素")
-        print()
-    
-    # 三、宏观
-    show_macro_detail = (mode == "detail") or expand_macro
-    
-    print("三、宏观 / 家庭理财")
-    print(f"- 更新时间：{m['time']}")
-    print()
-    
-    if show_macro_detail:
-        print(f"1. 当前阶段：{m['phase']}")
-        print()
-        print(f"2. 当前阶段定义：{m['phase_def']}")
-        print()
-        print(f"3. 为什么是这个阶段：")
-        for reason in m.get('reasons', [])[:3]:
-            print(f"   - {reason}")
-        print()
-        print(f"4. 家庭策略：{m['strategy']}")
-        print()
-        print(f"5. 家庭策略定义：{m['strategy_def']}")
-        print()
-        print(f"6. 对我现在意味着什么：")
-        for impl in m.get('implications', [])[:4]:
-            print(f"   - {impl}")
-        print()
-        print(f"7. 一句话建议：{m['advice']}")
-        print()
-    else:
-        print(f"- 当前阶段：{m['phase']}")
-        print(f"- 家庭策略：{m['strategy']}")
-        print(f"- 一句话建议：{m['advice']}")
-        print()
-    
-    # 四、总判断
-    print("四、总判断")
-    
-    news_valid = n['mode'] in ["实时模式", "缓存模式"] and n.get("news")
-    has_risk = news_valid and any("利空" in n.get('title','') or "承压" in str(n) for n in n.get("news", []))
-    
-    risk_score = 0
-    if q['status'] == "危险": risk_score += 3
-    elif q['status'] == "预警": risk_score += 2
-    if has_risk: risk_score += 2
-    if m['strategy'] in ["保守"]: risk_score += 1
-    
-    if risk_score >= 4:
-        risk_level = "高"
-        overall = "暂时保守"
-    elif risk_score >= 2:
-        risk_level = "中"
-        overall = "谨慎运行"
-    else:
-        risk_level = "低"
-        overall = "继续运行"
-    
-    if q['status'] == "危险" or (not news_valid and q['status'] == "预警"):
-        basis = "以量化模块为主"
-    elif has_risk:
-        basis = "以新闻模块为主"
-    elif m['strategy'] in ["保守", "稳健偏保守"]:
-        basis = "以宏观模块为主"
-    else:
-        basis = "综合判断"
-    
-    news_note = "" if news_valid else "（本次总判断暂不纳入新闻因素）"
-    
-    if overall == "暂时保守":
-        advice = f"总体偏保守，{q['action']}"
-    elif overall == "谨慎运行":
-        advice = "控制风险，保持当前节奏"
-    else:
-        advice = "保持正常节奏"
-    
-    print(f"- 总体风险等级：{risk_level}")
-    print(f"- 今天整体建议：{overall}")
-    print(f"- 判断依据：{basis} {news_note}")
-    print(f"- {advice}")
-    print()
-    print("="*50)
+    # 输出
+    output = format_output(quant, news, macro, bot_status, demo_status, is_detail)
+    print(output)
+
 
 if __name__ == "__main__":
     user_input = sys.argv[1] if len(sys.argv) > 1 else ""
