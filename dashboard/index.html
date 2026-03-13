@@ -287,72 +287,99 @@
     </div>
     
     <script>
-        // 状态映射
+        // 状态映射 - 与 commander_status.json 共用
         const statusMap = {
             'critical': { text: '危险', class: 'danger' },
             'warning': { text: '预警', class: 'warning' },
-            'ok': { text: '正常', class: 'success' }
+            'ok': { text: '正常', class: 'success' },
+            'degraded': { text: '降级', class: 'danger' },
+            'failed': { text: '失败', class: 'danger' },
+            'expired': { text: '过期', class: 'warning' },
+            'stale': { text: '过期', class: 'warning' },
+            'invalid': { text: '无效', class: 'danger' },
+            'fresh': { text: '正常', class: 'success' }
         };
         
+        // 风险等级映射
         const riskMap = {
             'critical': { text: '高', class: 'danger' },
             'warning': { text: '中', class: 'warning' },
+            'degraded': { text: '降级', class: 'danger' },
             'ok': { text: '低', class: 'success' },
             'none': { text: '无', class: 'info' }
+        };
+        
+        // freshness 映射
+        const freshnessMap = {
+            'fresh': { text: '正常', class: 'success' },
+            'stale': { text: '过期', class: 'warning' },
+            'expired': { text: '过期', class: 'danger' },
+            'invalid': { text: '无效', class: 'danger' }
         };
         
         // 加载数据
         async function loadData() {
             try {
                 const [commander, quant, news, macro] = await Promise.all([
-                    fetch('data/latest/commander_summary.json').then(r => r.json()),
+                    fetch('data/latest/commander_status.json').then(r => r.json()),
                     fetch('data/latest/quant_report.json').then(r => r.json()),
                     fetch('data/latest/news_report.json').then(r => r.json()),
                     fetch('data/latest/macro_report.json').then(r => r.json())
                 ]);
                 
-                // 更新时间
-                document.getElementById('commander-time').textContent = commander.updated_at || '-';
+                // 更新时间 (兼容新旧字段)
+                document.getElementById('commander-time').textContent = commander.generated_at || commander.updated_at || '-';
                 document.getElementById('quant-time').textContent = quant.updated_at || '-';
                 document.getElementById('news-time').textContent = news.updated_at || '-';
                 document.getElementById('macro-time').textContent = macro.updated_at || '-';
                 
-                // 总览 - 总体状态
-                const risk = riskMap[commander.overall_risk_level] || riskMap['none'];
+                // 总览 - 总体状态 (使用 commander_status.json)
+                const overallStatus = commander.overall_status || 'unknown';
+                const risk = riskMap[overallStatus] || riskMap['none'];
                 const rLevel = document.getElementById('risk-level');
                 rLevel.textContent = risk.text;
                 rLevel.className = 'metric-value ' + risk.class;
                 
-                document.getElementById('overall-advice').textContent = commander.overall_advice || '-';
+                // 使用 actions 作为建议
+                const actions = commander.actions || [];
+                const mainAction = actions.length > 0 ? actions[0].description : '-';
+                document.getElementById('overall-advice').textContent = mainAction;
                 
-                const qStatus = statusMap[quant.status] || statusMap['ok'];
+                // 量化状态 - 使用 quant.data_validity 和 freshness
+                const isValid = quant.data_validity !== false;
+                const qStatus = isValid ? statusMap['ok'] : statusMap['invalid'];
                 const qStatEl = document.getElementById('quant-status');
                 qStatEl.textContent = qStatus.text;
                 qStatEl.className = 'metric-value ' + qStatus.class;
                 
-                const pnlVal = quant.today_pnl_u || 0;
+                // 兼容旧字段
+                const pnlVal = quant.today_pnl_u || quant.used_u || 0;
                 const pnlEl = document.getElementById('quant-pnl');
                 pnlEl.textContent = (pnlVal >= 0 ? '+' : '') + pnlVal.toFixed(2) + ' U';
                 pnlEl.className = 'metric-value ' + (pnlVal >= 0 ? 'success' : 'danger');
                 
-                document.getElementById('basis').textContent = commander.judgement_basis || '-';
+                // 判断依据
+                document.getElementById('basis').textContent = quant.risk_reason || quant.status || '-';
                 
-                // 总览 - 新闻
+                // 总览 - 新闻 (兼容新格式)
                 const nMode = document.getElementById('news-mode');
-                if (news.fetch_mode === '实时模式') {
+                const newsMode = news.fetch_mode || news.mode || '';
+                if (newsMode === 'realtime' || newsMode === '实时') {
                     nMode.innerHTML = '<span class="time-badge time-live">实时</span>';
-                } else if (news.fetch_mode === '缓存模式') {
+                } else if (newsMode === 'cache' || newsMode === '缓存') {
                     nMode.innerHTML = '<span class="time-badge time-cache">缓存</span>';
                 } else {
                     nMode.innerHTML = '<span class="time-badge time-none">无数据</span>';
                 }
                 
-                // 总览 - 量化
-                document.getElementById('grid-levels').textContent = quant.inventory_layers_used + '/' + quant.inventory_layers_limit;
-                document.getElementById('grid-levels').className = 'metric-value ' + (quant.inventory_layers_used >= quant.inventory_layers_limit ? 'danger' : '');
-                document.getElementById('utilization').textContent = quant.capital_utilization_pct + '%';
-                document.getElementById('btc-price').textContent = '$' + (quant.price_usd || 0).toLocaleString();
-                document.getElementById('quant-action').textContent = quant.top_action || '-';
+                // 总览 - 量化 (兼容新旧字段)
+                const layers = quant.inventory_layers_used || quant.layers_used || 0;
+                const limit = quant.inventory_layers_limit || quant.layers_limit || 6;
+                document.getElementById('grid-levels').textContent = layers + '/' + limit;
+                document.getElementById('grid-levels').className = 'metric-value ' + (layers >= limit ? 'danger' : '');
+                document.getElementById('utilization').textContent = (quant.capital_utilization_pct || quant.utilization_pct || 0) + '%';
+                document.getElementById('btc-price').textContent = '$' + (quant.price_usdt || quant.price || 0).toLocaleString();
+                document.getElementById('quant-action').textContent = quant.top_action || quant.action || '-';
                 
                 // 总览 - 新闻摘要
                 document.getElementById('high-cred-news').textContent = (news.high_cred_today_count || 0) + '条';
