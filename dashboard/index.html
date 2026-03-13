@@ -355,11 +355,14 @@
                 document.getElementById('quant-action').textContent = quant.top_action || '-';
                 
                 // 总览 - 新闻摘要
-                document.getElementById('high-cred-news').textContent = news.high_cred_count + '条';
+                document.getElementById('high-cred-news').textContent = (news.high_cred_today_count || 0) + '条';
                 const topNews = document.getElementById('top-news');
-                if (news.articles && news.articles[0]) {
-                    topNews.textContent = news.articles[0].title || '-';
-                    topNews.title = news.articles[0].title || '';
+                const newsList = (news.today_news && news.today_news.length > 0) ? news.today_news : (news.recent_news || []);
+                if (newsList.length > 0) {
+                    topNews.textContent = newsList[0].title ? newsList[0].title.substring(0, 30) + '...' : '-';
+                    topNews.title = newsList[0].title || '';
+                } else {
+                    topNews.textContent = '今日暂无重要新闻';
                 }
                 
                 // 总览 - 宏观
@@ -416,12 +419,14 @@
                     nMode2.innerHTML = '<span class="time-badge time-none">无数据</span>';
                 }
                 
-                document.getElementById('n-total').textContent = news.total_count + '条';
-                document.getElementById('n-high').textContent = news.high_cred_count + '条';
+                document.getElementById('n-total').textContent = (news.today_news_count || 0) + '条';
+                document.getElementById('n-high').textContent = (news.high_cred_today_count || 0) + '条';
                 
                 const artList = document.getElementById('n-articles');
-                if (news.articles && news.articles.length > 0) {
-                    artList.innerHTML = news.articles.map((a, i) => `
+                const displayNews = (news.today_news && news.today_news.length > 0) ? news.today_news : (news.recent_news || []);
+                
+                if (displayNews.length > 0) {
+                    artList.innerHTML = displayNews.map((a, i) => `
                         <div class="news-item">
                             <div class="news-title">
                                 ${a.url ? '<a href="' + a.url + '" target="_blank">' + (a.title || '').substring(0,80) + '</a>' : (a.title || '').substring(0,80)}
@@ -437,7 +442,7 @@
                         </div>
                     `).join('');
                 } else {
-                    artList.innerHTML = '<div class="news-item">暂无数据</div>';
+                    artList.innerHTML = '<div class="news-item">今日暂无重要新闻</div>';
                 }
                 
                 // ===== 宏观页 =====
