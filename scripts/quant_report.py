@@ -10,9 +10,13 @@ import hmac
 import hashlib
 import requests
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 加载 .env
+load_dotenv("/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/.env")
 
 # 配置
-STATE_FILE = "/tmp/binance-spot-grid-bot/state_v2.json"
+STATE_FILE = "/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/state_v2.json"
 DEMO_API_BASE = "https://demo-api.binance.com"
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
@@ -152,13 +156,14 @@ def analyze():
         price = get_demo_price()
         orders = get_demo_open_orders()
         
-        # 检查数据是否有效
+        # 检查数据是否有效 - 先获取余额再检查
+        quote_balance = balance.get('USDT') or balance.get('USDC') if balance else None
+        
         if price is None or quote_balance is None:
             # Demo API 异常
             raise Exception(f"Demo API 异常: {_demo_api_status.get('error', '未知')}")
         
         # 使用 Demo 数据
-        quote_balance = balance.get('USDT', 0) or balance.get('USDC', 0)
         base_balance = balance.get('BTC', 0)
         
         # 策略参数
