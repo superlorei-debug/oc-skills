@@ -62,8 +62,32 @@ def _demo_request(method: str, endpoint: str, params: dict = None) -> dict:
     return resp.json()
 
 
+# Demo API 连接状态
+_demo_api_status = {"connected": True, "error": None}
+
+
+def check_demo_api():
+    """检查 Demo API 是否可用"""
+    global _demo_api_status
+    try:
+        # 尝试调用实际接口来验证
+        balance = _demo_request("GET", "/api/v3/account")
+        _demo_api_status = {"connected": True, "error": None}
+        return True
+    except Exception as e:
+        error_msg = str(e)
+        if "502" in error_msg or "Bad Gateway" in error_msg:
+            _demo_api_status = {"connected": False, "error": "502 Bad Gateway"}
+        else:
+            _demo_api_status = {"connected": False, "error": error_msg[:50]}
+        return False
+
+
 def get_demo_balance():
     """获取 Demo 账户真实余额"""
+    if not _demo_api_status["connected"]:
+        return {'USDT': None, 'USDC': None, 'BTC': None}
+    
     try:
         result = _demo_request("GET", "/api/v3/account")
         balances = {b['asset']: {'free': float(b['free']), 'locked': float(b['locked'])} 
@@ -76,21 +100,27 @@ def get_demo_balance():
         }
     except Exception as e:
         print(f"获取余额失败: {e}")
-        return {'USDT': 0, 'USDC': 0, 'BTC': 0}
+        return {'USDT': None, 'USDC': None, 'BTC': None}
 
 
 def get_demo_price():
     """获取 BTC 当前价格"""
+    if not _demo_api_status["connected"]:
+        return None
+    
     try:
         resp = requests.get(f"{DEMO_API_BASE}/api/v3/ticker/price?symbol=BTCUSDT")
         return float(resp.json()['price'])
     except Exception as e:
         print(f"获取价格失败: {e}")
-        return 0
+        return None
 
 
 def get_demo_open_orders():
     """获取 Demo 账户真实挂单"""
+    if not _demo_api_status["connected"]:
+        return []
+    
     try:
         params = {"symbol": SYMBOL}
         result = _demo_request("GET", "/api/v3/openOrders", params)
@@ -113,25 +143,32 @@ def get_demo_open_orders():
 
 
 def analyze():
+    # 先检查 Demo API 是否可用
+    check_demo_api()
+    
     # 尝试从 Demo API 获取数据
     try:
         balance = get_demo_balance()
         price = get_demo_price()
         orders = get_demo_open_orders()
         
+        # 检查数据是否有效
+        if price is None or quote_balance is None:
+            # Demo API 异常
+            raise Exception(f"Demo API 异常: {_demo_api_status.get('error', '未知')}")
+        
         # 使用 Demo 数据
         quote_balance = balance.get('USDT', 0) or balance.get('USDC', 0)
         base_balance = balance.get('BTC', 0)
         
         # 策略参数
-        # Demo 账户总U (5000 USDT + 5000 USDC = 10000)
         total_u = quote_balance  # 使用账户实际余额作为总U
         
         # 计算挂单占用
         order_value = sum(o.get('origQty', 0) * o.get('price', 0) for o in orders)
         
         # 持仓占用 (如果有 BTC)
-        position_value = base_balance * price
+        position_value = base_balance * price if base_balance else 0
         
         used_u = position_value + order_value
         remaining_u = total_u - used_u
@@ -147,56 +184,57 @@ def analyze():
         data_source = "Binance Demo Trading (真实)"
         
     except Exception as e:
-        # 回退到本地状态
-        print(f"Demo API 连接失败，回退到本地数据: {e}")
-        d = load_state()
-        
-        price = d.get("anchor_price", 0)
-        quote_balance = d.get("paper_quote_balance", 0)
-        base_balance = d.get("paper_base_balance", 0)
-        orders = d.get("open_buy_orders", [])
-        
-        total_u = 5000
-        order_value = sum(o.get("notional", 0) for o in orders)
-        position_value = base_balance * price
-        used_u = position_value + order_value
-        remaining_u = total_u - used_u
-        utilization = (used_u / total_u * 100) if total_u > 0 else 0
-        
-        order_prices = [o.get('price', 0) for o in orders if o.get('price', 0) > 0]
-        order_prices.sort(reverse=True)
-        
-        current_layers = len(orders)
+        # Demo API 异常，返回 null 数据
+        print(f"Demo API 异常: {e}")
+        price = None
+        quote_balance = None
+        base_balance = None
+        orders = []
+        total_u = None
+        order_value = 0
+        position_value = 0
+        used_u = 0
+        remaining_u = None
+        utilization = None
+        order_prices = []
+        current_layers = 0
         max_layers = 6
-        
-        data_source = "本地状态 (Paper)"
+        data_source = f"Demo API 异常 ({_demo_api_status.get('error', '未知')})"
     
     # 风控判断
     risks = []
     actions = []
     
-    if current_layers >= max_layers:
-        status = "critical"
-        status_cn = "危险"
-        conclusion = f"库存层数已到 {current_layers}/{max_layers}，已打满"
-        risks.append(f"库存层数{current_layers}已打满")
-        actions.append("暂停新开仓")
-    elif current_layers >= 4:
-        status = "warning"
-        status_cn = "预警"
-        conclusion = f"库存层数已到 {current_layers}/{max_layers}，接近上限"
-        risks.append(f"库存层数{current_layers}接近上限{max_layers}")
-        actions.append("关注加仓节奏")
+    # 只有在数据有效时才进行风控判断
+    if utilization is not None:
+        if current_layers >= max_layers:
+            status = "critical"
+            status_cn = "危险"
+            conclusion = f"库存层数已到 {current_layers}/{max_layers}，已打满"
+            risks.append(f"库存层数{current_layers}已打满")
+            actions.append("暂停新开仓")
+        elif current_layers >= 4:
+            status = "warning"
+            status_cn = "预警"
+            conclusion = f"库存层数已到 {current_layers}/{max_layers}，接近上限"
+            risks.append(f"库存层数{current_layers}接近上限{max_layers}")
+            actions.append("关注加仓节奏")
+        else:
+            status = "ok"
+            status_cn = "正常"
+            conclusion = "库存层数适中，策略正常运行"
+        
+        if utilization > 85:
+            status = "critical"
+            conclusion = f"资金利用率{utilization:.1f}%超限"
+            risks.append(f"资金利用率{utilization:.1f}%超限")
+            actions.append("降低仓位")
     else:
-        status = "ok"
-        status_cn = "正常"
-        conclusion = "库存层数适中，策略正常运行"
-    
-    if utilization > 85:
-        status = "critical"
-        conclusion = f"资金利用率{utilization:.1f}%超限"
-        risks.append(f"资金利用率{utilization:.1f}%超限")
-        actions.append("降低仓位")
+        # 数据无效
+        status = "failed"
+        conclusion = "Demo API 异常，无法获取数据"
+        risks.append("Demo API 异常")
+        actions.append("检查 Demo API 连接")
     
     # 生成 JSON 输出
     output = {
@@ -208,12 +246,12 @@ def analyze():
         "inventory_layers_used": current_layers,
         "inventory_layers_limit": max_layers,
         "total_u": total_u,
-        "used_u": round(used_u, 2),
-        "open_orders_reserved_u": round(order_value, 2),
-        "total_used_u": round(used_u, 2),
-        "remaining_u": round(remaining_u, 2),
-        "capital_utilization_pct": round(utilization, 1),
-        "open_orders_count": len(orders),
+        "used_u": round(used_u, 2) if used_u is not None else None,
+        "open_orders_reserved_u": round(order_value, 2) if order_value is not None else None,
+        "total_used_u": round(used_u, 2) if used_u is not None else None,
+        "remaining_u": round(remaining_u, 2) if remaining_u is not None else None,
+        "capital_utilization_pct": round(utilization, 1) if utilization is not None else None,
+        "open_orders_count": len(orders) if orders is not None else None,
         "open_orders_prices": order_prices,
         "status": status,
         "risk_reason": "; ".join(risks) if risks else "暂无",
