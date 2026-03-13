@@ -313,6 +313,8 @@ def calculate_overall_status(quant, demo_status):
 
 def build_report():
     """构建完整报告"""
+    import subprocess
+    
     bot_status = check_bot_status()
     demo_status = check_demo_api()
     
@@ -323,10 +325,37 @@ def build_report():
     overall_status = calculate_overall_status(quant, demo_status)
     actions = generate_actions(quant, demo_status)
     
+    # 获取 Git 版本信息
+    try:
+        git_rev = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd="/Users/mac/.openclaw/workspace/openclaw-project",
+            capture_output=True, text=True, timeout=5
+        )
+        current_commit = git_rev.stdout.strip() if git_rev.returncode == 0 else "unknown"
+    except:
+        current_commit = "unknown"
+    
+    # 获取运行路径
+    import os
+    runtime_path = os.path.realpath("/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/bot.py")
+    
+    # 启动时间（从进程获取）
+    start_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    
     report = {
         "schema_version": "v1",
         "generated_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "overall_status": overall_status,
+        "runtime": {
+            "current_commit": current_commit,
+            "runtime_path": runtime_path,
+            "start_time": start_time,
+            "restart_time": start_time,
+            "target_mode": quant.get("target_mode"),
+            "actual_mode": quant.get("actual_mode") or quant.get("target_mode"),
+            "degrade_reason": quant.get("degrade_reason")
+        },
         "quant": quant,
         "news": news,
         "macro": macro,
