@@ -30,6 +30,9 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 ALERT_COOLDOWN = 3600  # 1小时内不重复告警
 RECOVERY_COOLDOWN = 1800  # 30分钟内不重复恢复通知
 
+# Dashboard 数据健康检查
+DASHBOARD_DATA_MAX_AGE = 300  # 数据最大5分钟未更新
+
 
 def load_alert_state():
     """加载告警状态"""
@@ -84,6 +87,38 @@ def load_current_status():
         return None
 
 
+def check_dashboard_health():
+    """检查 Dashboard 数据健康状态"""
+    issues = []
+    now = time.time()
+    
+    # 需要检查的关键文件
+    required_files = [
+        "commander_status.json",
+        "quant_report.json",
+        "news_report.json",
+        "macro_report.json"
+    ]
+    
+    for filename in required_files:
+        filepath = f"{DATA_DIR}/{filename}"
+        
+        # 检查文件是否存在
+        if not os.path.exists(filepath):
+            issues.append(f"{filename} 不存在")
+            continue
+        
+        # 检查文件是否过期 (超过5分钟)
+        mtime = os.path.getmtime(filepath)
+        age_seconds = now - mtime
+        
+        if age_seconds > DASHBOARD_DATA_MAX_AGE:
+            age_min = int(age_seconds / 60)
+            issues.append(f"{filename} 已过期 ({age_min}分钟)")
+    
+    return issues if issues else None
+
+
 def check_and_alert():
     """检查状态并发送告警/恢复通知"""
     alert_state = load_alert_state()
@@ -115,7 +150,7 @@ def check_and_alert():
     prev_state = alert_state.get("previous_state", {})
     prev_signature = f"{prev_state.get('overall', '')}|{prev_state.get('target_mode', '')}|{prev_state.get('actual_mode', '')}|{prev_state.get('demo_connected', True)}|{prev_state.get('can_trade', False)}"
     
-    # 1. 检查异常告警
+    # ==================== 1. 核心系统告警 ====================
     alert_conditions = []
     
     # Bot 进程检查
@@ -157,6 +192,16 @@ def check_and_alert():
             "type": "data_invalid",
             "title": "量化数据失效",
             "severity": "warning"
+        })
+    
+    # ==================== 2. Dashboard 数据健康检查 ====================
+    dashboard_issues = check_dashboard_health()
+    if dashboard_issues:
+        alert_conditions.append({
+            "type": "dashboard_data_issue",
+            "title": "Dashboard 数据异常",
+            "severity": "warning",
+            "details": dashboard_issues
         })
     
     # 2. 发送告警
@@ -210,6 +255,15 @@ def check_and_alert():
             "title": "量化数据已恢复"
         })
     
+    # Dashboard 数据恢复
+    prev_dashboard_issue = prev_state.get("dashboard_issue", False)
+    current_dashboard_issues = check_dashboard_health()
+    if prev_dashboard_issue and not current_dashboard_issues:
+        recovery_conditions.append({
+            "type": "dashboard_recovered",
+            "title": "Dashboard 数据已恢复"
+        })
+    
     # 发送恢复通知
     for condition in recovery_conditions:
         recovery_key = condition["type"]
@@ -230,7 +284,8 @@ def check_and_alert():
         "actual_mode": actual_mode,
         "demo_connected": demo_connected,
         "can_trade": can_trade,
-        "data_validity": data_validity
+        "data_validity": data_validity,
+        "dashboard_issue": bool(dashboard_issues)
     }
     save_alert_state(alert_state)
 
@@ -252,6 +307,26 @@ def format_alert_message(condition, status):
     lines.append(f"时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("")
     lines.append(f"异常类型：{condition['title']}")
+    
+    # Dashboard 数据异常特殊处理
+    if condition.get("type") == "dashboard_data_issue":
+        lines.append(f"当前状态：数据异常")
+        lines.append("")
+        lines.append("影响：")
+        lines.append("- Dashboard 页面可能显示大量 '-'")
+        lines.append("- 看板数据可能失真")
+        lines.append("")
+        lines.append("检查项：")
+        for detail in condition.get("details", []):
+            lines.append(f"- {detail}")
+        lines.append("")
+        lines.append("建议动作：")
+        lines.append("1. 检查 data/latest/ 目录文件是否存在")
+        lines.append("2. 检查文件更新时间")
+        lines.append("3. 检查 Bot 是否在运行")
+        lines.append("4. 刷新 Dashboard 页面")
+        return "\n".join(lines)
+    
     lines.append(f"当前状态：降级运行" if actual_mode == "paper" else "当前状态：异常")
     lines.append(f"目标模式：{target_mode}")
     lines.append(f"实际模式：{actual_mode}")
@@ -293,6 +368,17 @@ def format_recovery_message(condition, status):
     lines.append(f"时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append("")
     lines.append(f"恢复项目：{condition['title']}")
+    
+    # Dashboard 恢复特殊处理
+    if condition.get("type") == "dashboard_recovered":
+        lines.append(f"当前状态：正常运行")
+        lines.append("")
+        lines.append("说明：")
+        lines.append("- Dashboard 数据已恢复正常")
+        lines.append("- 页面应显示最新数据")
+        lines.append("- 不再有 '-' 出现")
+        return "\n".join(lines)
+    
     lines.append(f"当前状态：正常运行")
     lines.append(f"目标模式：{target_mode}")
     lines.append(f"实际模式：{actual_mode}")
@@ -319,6 +405,8 @@ def main():
     parser.add_argument("--check", action="store_true", help="执行异常检查")
     parser.add_argument("--test-alert", action="store_true", help="测试告警消息")
     parser.add_argument("--test-recovery", action="store_true", help="测试恢复消息")
+    parser.add_argument("--test-dashboard-alert", action="store_true", help="测试 Dashboard 告警消息")
+    parser.add_argument("--test-dashboard-recovery", action="store_true", help="测试 Dashboard 恢复消息")
     
     args = parser.parse_args()
     
@@ -357,6 +445,45 @@ def main():
             "quant": {"data_validity": True}
         }
         message = format_recovery_message({"title": "Demo API 已恢复", "type": "demo_api_recovered"}, test_status)
+        print(message)
+    
+    elif args.test_dashboard_alert:
+        # 测试 Dashboard 告警
+        test_status = {
+            "overall_status": "warning",
+            "runtime": {
+                "target_mode": "binance_demo",
+                "actual_mode": "binance_demo",
+                "degrade_reason": None
+            },
+            "system": {
+                "bot": {"running": True},
+                "demo_api": {"connected": True}
+            },
+            "quant": {"data_validity": True}
+        }
+        message = format_alert_message({
+            "title": "Dashboard 数据异常",
+            "type": "dashboard_data_issue",
+            "details": ["quant_report.json 已过期 (32分钟)", "news_report.json 不存在"]
+        }, test_status)
+        print(message)
+    
+    elif args.test_dashboard_recovery:
+        # 测试 Dashboard 恢复
+        test_status = {
+            "overall_status": "ok",
+            "runtime": {
+                "target_mode": "binance_demo",
+                "actual_mode": "binance_demo"
+            },
+            "system": {
+                "bot": {"running": True},
+                "demo_api": {"connected": True}
+            },
+            "quant": {"data_validity": True}
+        }
+        message = format_recovery_message({"title": "Dashboard 数据已恢复", "type": "dashboard_recovered"}, test_status)
         print(message)
     
     elif args.check:

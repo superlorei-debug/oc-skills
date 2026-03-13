@@ -77,6 +77,37 @@ grep price_usd ~/openclaw-project/data/latest/quant_report.json
 3. 如果主真源有数据但 Dashboard 显示 "-"，检查：
 - Dashboard 服务是否运行
 - 浏览器缓存
+
+---
+
+## Telegram 告警机制
+
+### Dashboard 数据同步告警
+
+当 Dashboard 数据异常时，系统会自动告警：
+
+**触发条件：**
+- commander_status.json 超过 5 分钟未更新
+- quant_report.json 超过 5 分钟未更新
+- news_report.json 超过 5 分钟未更新
+- macro_report.json 超过 5 分钟未更新
+- 任意关键文件不存在
+
+**告警类型：**
+- `dashboard_data_issue` - Dashboard 数据异常
+- `dashboard_recovered` - Dashboard 数据恢复
+
+**告警冷却：**
+- 告警：1小时不重复
+- 恢复：30分钟不重复
+
+### 故障排查路径
+
+| 问题 | 排查文件/命令 |
+|------|---------------|
+| Dashboard 显示 "-" | `data/latest/*.json` 是否存在/更新 |
+| 告警没收到 | `alert_state.json` 冷却状态 |
+| Telegram 发不出去 | `.env` TELEGRAM 配置 |
 | **日志目录** | `~/openclaw-project/logs/` |
 
 ---
