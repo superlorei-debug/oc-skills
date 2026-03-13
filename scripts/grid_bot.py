@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Enhanced spot grid paper bot (v2)
----------------------------------
-Features:
-1) Market regime state machine: RANGE / UPTREND / DOWNTREND / CRASH
-2) Local paper portfolio with internal balance / reserved cash accounting
-3) Core position + breakout position to reduce straight-up move miss risk
-4) Crash mode + buy-order cancellation + partial de-risking
-5) Layer-weighted grid sizing + total budget cap
-6) Risk computed from total paper balances + reserved quote for open buy orders
-
-This version is optimized for local paper testing with live Binance spot market data.
-It does NOT place real orders.
+Enhanced spot grid bot with Demo API Manager
+- 工程化容错处理
+- 三条链分离 (market/account/order)
+- 熔断机制
+- 恢复对账
 """
 
 from __future__ import annotations
@@ -31,6 +24,10 @@ from typing import Dict, List, Optional, Tuple
 import ccxt
 import requests
 from dotenv import load_dotenv
+
+# 导入 Demo API Manager
+sys.path.insert(0, "/Users/mac/.openclaw/workspace/openclaw-project/scripts")
+from demo_api_manager import DemoAPIManager, init_demo_api_manager, get_demo_api_manager
 
 load_dotenv()
 
@@ -131,33 +128,91 @@ BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "false").lower() == "true"
 # 全局变量存储实际使用的模式
 _actual_mode = EXECUTION_MODE
 
+# Demo API 配置
+DEMO_API_BASE = "https://demo-api.binance.com"
+_demo_api_key = ""
+_demo_api_secret = ""
+_demo_api_manager = None  # DemoAPIManager 实例
+
+
+def _demo_sign(query: str) -> str:
+    """Demo API 签名"""
+    import hmac
+    import hashlib
+    return hmac.new(_demo_api_secret.encode(), query.encode(), hashlib.sha256).hexdigest()
+
+
+def _demo_request(method: str, endpoint: str, params: dict = None) -> dict:
+    """Demo API 请求"""
+    import requests
+    import time
+    
+    headers = {"X-MBX-APIKEY": _demo_api_key}
+    
+    # 构建查询字符串
+    ts = int(time.time() * 1000)
+    if params:
+        query = "&".join([f"{k}={v}" for k, v in params.items()])
+        query += f"&timestamp={ts}&recvWindow=10000"
+    else:
+        query = f"timestamp={ts}&recvWindow=10000"
+    
+    signature = _demo_sign(query)
+    url = f"{DEMO_API_BASE}{endpoint}?{query}&signature={signature}"
+    
+    if method == "GET":
+        resp = requests.get(url, headers=headers)
+    elif method == "POST":
+        resp = requests.post(url, headers=headers)
+    elif method == "DELETE":
+        resp = requests.delete(url, headers=headers)
+    else:
+        raise ValueError(f"Unsupported method: {method}")
+    
+    if resp.status_code >= 400:
+        raise Exception(f"Demo API error: {resp.status_code} {resp.text}")
+    
+    return resp.json()
+
+
 def create_exchange() -> ccxt.Exchange:
-    global _actual_mode
+    global _actual_mode, _demo_api_key, _demo_api_secret
     
     mode = EXECUTION_MODE
     api_key = os.getenv("BINANCE_API_KEY", "")
     api_secret = os.getenv("BINANCE_API_SECRET", "")
     
     if mode == "binance_demo":
-        # Binance Demo Trading 环境
-        try:
-            exchange = ccxt.binance({
-                "apiKey": api_key,
-                "secret": api_secret,
-                "enableRateLimit": True,
-                "options": {"defaultType": "spot"},
-                "urls": {
-                    "api": "https://demo-api.binance.com/api",
-                },
-            })
-            # 测试连接
-            exchange.fetch_ticker(SYMBOL)
+        # 使用 Demo API Manager 进行工程化容错处理
+        global _demo_api_manager
+        
+        # 初始化管理器
+        _demo_api_manager = init_demo_api_manager(api_key, api_secret)
+        
+        # 启动前健康检查
+        health = _demo_api_manager.health_check()
+        
+        if health["passed"]:
             _actual_mode = "binance_demo"
-            log(f"Using binance_demo mode (demo-api.binance.com)")
-            return exchange
-        except Exception as e:
-            log(f"binance_demo unavailable: {e}, fallback to paper mode")
+            log(f"✅ binance_demo 健康检查通过")
+            log(f"   - ping: {health['checks'][0]['status']}")
+            log(f"   - 账户读取: {health['checks'][1]['status']}")
+            log(f"   - 订单读取: {health['checks'][2]['status']}")
+        else:
             _actual_mode = "paper"
+            _demo_api_manager.state.actual_mode = "paper"
+            _demo_api_manager.state.degrade_reason = "健康检查失败"
+            log(f"❌ binance_demo 健康检查失败，降级到 paper 模式")
+            for check in health["checks"]:
+                if check["status"] == "fail":
+                    log(f"   - {check['name']}: {check.get('error', 'failed')}")
+        
+        # 返回 mock exchange 用于价格查询
+        exchange = ccxt.binance({
+            "enableRateLimit": True,
+            "options": {"defaultType": "spot"},
+        })
+        return exchange
     
     elif mode == "binance_testnet":
         # Testnet 模式 (备用)
@@ -586,51 +641,120 @@ def get_exchange():
     return _exchange_instance
 
 
+def is_demo_mode() -> bool:
+    """检查是否使用 demo 模式"""
+    return _actual_mode == "binance_demo"
+
+
 def exchange_place_buy(exchange, price: float, amount: float) -> Optional[dict]:
-    """在交易所下单买入（testnet/live模式）"""
+    """在交易所下单买入（使用 DemoAPIManager）"""
     try:
-        order = exchange.create_order(
-            symbol=SYMBOL,
-            type="limit",
-            side="buy",
-            amount=amount,
-            price=price,
-        )
-        log(f"EXCHANGE BUY: order_id={order.get('id')} price={price} amount={amount}")
-        return order
+        # 检查是否可以交易
+        if is_demo_mode() and _demo_api_manager:
+            status = _demo_api_manager.get_status()
+            if not status.get("can_trade"):
+                log(f"EXCHANGE BUY SKIPPED: Demo API not available (mode={status['actual_mode']}, circuit_broken={status['circuit_broken']})")
+                return None
+            
+            # 使用 Manager 下单
+            result = _demo_api_manager.place_order(price, amount)
+            if result:
+                log(f"EXCHANGE BUY (demo): order_id={result.get('orderId')} price={price} amount={amount}")
+            else:
+                log(f"EXCHANGE BUY FAILED: Demo API order failed")
+            return result
+        else:
+            # 标准 ccxt 模式
+            order = exchange.create_order(
+                symbol=SYMBOL,
+                type="limit",
+                side="buy",
+                amount=amount,
+                price=price,
+            )
+            log(f"EXCHANGE BUY: order_id={order.get('id')} price={price} amount={amount}")
+            return order
     except Exception as e:
         log(f"EXCHANGE BUY FAILED: {e}")
         return None
 
 
 def exchange_cancel_order(exchange, order_id: str) -> bool:
-    """取消交易所订单"""
+    """取消交易所订单（使用 DemoAPIManager）"""
     try:
-        exchange.cancel_order(order_id, SYMBOL)
-        log(f"EXCHANGE CANCEL: {order_id}")
-        return True
+        if is_demo_mode() and _demo_api_manager:
+            result = _demo_api_manager.cancel_order(order_id)
+            if result:
+                log(f"EXCHANGE CANCEL (demo): {order_id}")
+            else:
+                log(f"EXCHANGE CANCEL FAILED: {order_id}")
+            return result
+        else:
+            exchange.cancel_order(order_id, SYMBOL)
+            log(f"EXCHANGE CANCEL: {order_id}")
+            return True
     except Exception as e:
         log(f"EXCHANGE CANCEL FAILED: {e}")
         return False
 
 
 def exchange_get_balance(exchange) -> dict:
-    """获取交易所余额"""
+    """获取交易所余额（使用 DemoAPIManager）"""
     try:
-        balance = exchange.fetch_balance()
-        return {
-            "free_quote": float(balance.get("free", {}).get("USDC", 0)),
-            "free_base": float(balance.get("free", {}).get("BTC", 0)),
-            "total_quote": float(balance.get("total", {}).get("USDC", 0)),
-            "total_base": float(balance.get("total", {}).get("BTC", 0)),
-        }
+        if is_demo_mode() and _demo_api_manager:
+            balance = _demo_api_manager.get_balance()
+            if balance:
+                # 确定 quote 货币
+                quote = "USDT" if balance.get('USDT', 0) > 0 else "USDC"
+                return {
+                    "free_quote": balance.get(quote, 0),
+                    "free_base": balance.get("BTC", 0),
+                    "total_quote": balance.get(quote, 0),
+                    "total_base": balance.get("BTC", 0),
+                }
+            # 获取失败返回 null
+            return {"free_quote": None, "free_base": None, "total_quote": None, "total_base": None}
+        else:
+            balance = exchange.fetch_balance()
+            return {
+                "free_quote": float(balance.get("free", {}).get("USDC", 0)),
+                "free_base": float(balance.get("free", {}).get("BTC", 0)),
+                "total_quote": float(balance.get("total", {}).get("USDC", 0)),
+                "total_base": float(balance.get("total", {}).get("BTC", 0)),
+            }
+    except Exception as e:
+        log(f"EXCHANGE FETCH BALANCE FAILED: {e}")
+        return {"free_quote": None, "free_base": None, "total_quote": None, "total_base": None}
+        if is_demo_mode():
+            # Demo 模式
+            result = _demo_request("GET", "/api/v3/account")
+            balances = {b['asset']: float(b['free']) for b in result.get('balances', [])}
+            
+            # 确定 quote 货币 (USDT 或 USDC)
+            quote = "USDT" if "USDT" in balances else "USDC"
+            
+            return {
+                "free_quote": balances.get(quote, 0),
+                "free_base": balances.get("BTC", 0),
+                "total_quote": balances.get(quote, 0),
+                "total_base": balances.get("BTC", 0),
+            }
+        else:
+            # 标准 ccxt 模式
+            balance = exchange.fetch_balance()
+            return {
+                "free_quote": float(balance.get("free", {}).get("USDC", 0)),
+                "free_base": float(balance.get("free", {}).get("BTC", 0)),
+                "total_quote": float(balance.get("total", {}).get("USDC", 0)),
+                "total_base": float(balance.get("total", {}).get("BTC", 0)),
+            }
     except Exception as e:
         log(f"EXCHANGE FETCH BALANCE FAILED: {e}")
         return {"free_quote": 0, "free_base": 0, "total_quote": 0, "total_base": 0}
 
 
 def sync_state_from_exchange(state: dict) -> None:
-    """从交易所同步状态（testnet/live模式）"""
+    """从交易所同步状态（testnet/live/demo模式）"""
     if is_paper_mode():
         return
     
@@ -644,6 +768,10 @@ def sync_state_from_exchange(state: dict) -> None:
         
         # 同步挂单
         open_orders = exchange_get_open_orders(exchange)
+        
+        # 确定 quote 货币
+        quote = "USDT" if is_demo_mode() else "USDC"
+        
         # 转换交易所订单格式为本地图格式
         exchange_orders = []
         for order in open_orders:
@@ -670,7 +798,7 @@ def sync_state_from_exchange(state: dict) -> None:
         
         state["open_buy_orders"] = exchange_orders
         
-        log(f"SYNC FROM EXCHANGE: balance={balance['free_quote']:.2f} USDC, orders={len(exchange_orders)}")
+        log(f"SYNC FROM EXCHANGE: balance={balance['free_quote']:.2f} {quote}, orders={len(exchange_orders)}")
     except Exception as e:
         log(f"SYNC FROM EXCHANGE FAILED: {e}")
 
@@ -678,8 +806,29 @@ def sync_state_from_exchange(state: dict) -> None:
 def exchange_get_open_orders(exchange) -> list:
     """获取交易所开放订单"""
     try:
-        orders = exchange.fetch_open_orders(SYMBOL)
-        return orders
+        if is_demo_mode():
+            # Demo 模式
+            symbol = SYMBOL.replace("/", "")
+            params = {"symbol": symbol}
+            result = _demo_request("GET", "/api/v3/openOrders", params)
+            
+            # 转换为 ccxt 格式
+            orders = []
+            for o in result:
+                orders.append({
+                    "id": str(o.get("orderId")),
+                    "side": o.get("side", "").lower(),
+                    "price": float(o.get("price", 0)),
+                    "amount": float(o.get("origQty", 0)) - float(o.get("executedQty", 0)),
+                    "symbol": o.get("symbol"),
+                    "status": "open" if o.get("status") == "NEW" else o.get("status").lower(),
+                    "timestamp": o.get("time", 0),
+                })
+            return orders
+        else:
+            # 标准 ccxt 模式
+            orders = exchange.fetch_open_orders(SYMBOL)
+            return orders
     except Exception as e:
         log(f"EXCHANGE FETCH OPEN ORDERS FAILED: {e}")
         return []
