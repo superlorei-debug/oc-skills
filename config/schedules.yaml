@@ -1,6 +1,8 @@
 # 定时任务配置
 # 用于 OpenClaw cron jobs
 
+# ==================== 巡检消息 ====================
+# 每天 09:00
 schedules:
   # 早上巡检推送
   - id: health-morning
@@ -24,6 +26,20 @@ schedules:
       args: ["--type", "evening", "--send"]
     message_template: "【AI Quant Brain】晚间巡检"
 
+# ==================== 异常主动告警 ====================
+# 每15分钟检查一次
+  # 异常告警检查
+  - id: alert-check
+    name: 异常主动告警检查
+    cron: "*/15 * * * *"
+    enabled: true
+    action:
+      type: script
+      script: scripts/telegram_alert.py
+      args: ["--check"]
+    message_template: "【AI Quant Brain】异常告警"
+
+# ==================== 内容推送 (暂禁用) ====================
   # 早上新闻推送
   - id: news-morning
     name: 早上新闻推送
@@ -63,3 +79,9 @@ schedules:
       type: skill
       skill: xhs-operator
     message_template: "【小红书】周日发布时间到了"
+
+# ==================== 说明 ====================
+# 消息类型:
+# 1. 巡检消息 - 每天 09:00 / 21:00 定时推送
+# 2. 异常主动告警 - 每15分钟检查，异常时即时推送
+# 3. 恢复通知 - 异常恢复后即时推送
