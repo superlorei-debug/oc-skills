@@ -65,14 +65,21 @@ def check_bot_status():
 
 
 def get_exec_mode():
-    try:
-        with open("/tmp/binance-spot-grid-bot/.env") as f:
-            for line in f:
-                if "EXECUTION_MODE=" in line:
-                    return line.split("=")[1].strip()
-    except:
-        pass
-    return None
+    """获取执行模式"""
+    # 优先从运行目录读取
+    paths = [
+        "/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/.env",
+        "/tmp/binance-spot-grid-bot/.env"
+    ]
+    for path in paths:
+        try:
+            with open(path) as f:
+                for line in f:
+                    if "EXECUTION_MODE=" in line:
+                        return line.split("=")[1].strip()
+        except:
+            continue
+    return "unknown"
 
 
 def check_demo_api():
@@ -544,9 +551,22 @@ def format_daily_detail_report(report):
     # 五、系统运行
     lines.append("五、系统运行")
     lines.append("-" * 40)
+    # 获取模式信息
+    target_mode = r.get('target_mode')
+    actual_mode = r.get('actual_mode')
+    
     lines.append(f"├─ Bot 进程：{'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
-    lines.append(f"├─ 目标模式：{r.get('target_mode', '不适用') or '不适用'}")
-    lines.append(f"├─ 实际模式：{r.get('actual_mode', '不适用') or '不适用'}")
+    
+    # 只在有明确模式信息时显示
+    if target_mode or actual_mode:
+        if target_mode:
+            lines.append(f"├─ 目标模式：{target_mode}")
+        if actual_mode:
+            if actual_mode != target_mode:
+                lines.append(f"├─ 实际模式：{actual_mode} (已降级)")
+            else:
+                lines.append(f"├─ 实际模式：{actual_mode}")
+    
     lines.append(f"├─ Demo API：{'✅ 正常' if s.get('demo_api', {}).get('connected') else '❌ 异常'}")
     
     if r.get("degrade_reason"):
