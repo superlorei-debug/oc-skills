@@ -7,10 +7,23 @@
 
 ---
 
+## 文档体系
+
+> **重要**：本项目文档分为多个层次，各有明确用途：
+
+| 文档 | 用途 | 优先级 |
+|------|------|--------|
+| **PROTOCOL.md** | 状态字段协议标准 | ⭐⭐⭐ 最高 |
+| **RUN_GUIDE.md** | 运行/部署操作指南 | ⭐⭐⭐ 最高 |
+| **README.md** | 项目概览 | ⭐⭐ 中 |
+| ARCHITECTURE.md | 架构说明 | ⭐ 已过时，暂不作为依据 |
+
+---
+
 ## 当前状态
 
 - **交易所**：Binance
-- **运行模式**：Demo Trading
+- **运行模式**：Demo Trading (binance_demo)
 - **交易对**：BTC/USDT
 - **策略类型**：Grid Bot
 - **当前阶段**：Demo 验证阶段
@@ -22,6 +35,7 @@
 - 订单行为正确
 - 状态同步准确
 - Dashboard 与交易所数据一致
+- Demo API 异常自动降级
 
 ### 当前暂不优先
 
@@ -46,233 +60,189 @@
 
 ---
 
+## 目录结构
+
+```
+~/openclaw-project/
+├── scripts/              # 源码目录 (单源)
+│   ├── grid_bot.py      # 网格机器人
+│   ├── commander.py     # 主控汇总
+│   ├── quant_report.py # 量化报告
+│   ├── health_check.py # 健康巡检
+│   └── demo_api_manager.py # Demo API 管理
+├── runs/grid_bot/       # 运行目录 (符号链接)
+│   └── bot.py -> ../scripts/grid_bot.py
+├── data/latest/         # 状态文件
+│   ├── commander_status.json
+│   ├── quant_report.json
+│   ├── news_report.json
+│   └── macro_report.json
+├── deploy/              # 部署脚本
+│   ├── run_bot.sh
+│   ├── restart_bot.sh
+│   └── stop_bot.sh
+└── logs/                # 日志目录
+```
+
+---
+
 ## 核心模块
 
 ### 量化交易系统
 
-当前主运行模块：
-
-- **Binance Demo Trading**
+- **Binance Demo Trading** (binance_demo)
 - **BTC/USDT**
 - **Grid Bot**
 
-当前保留两种执行模式：
-
+执行模式：
 - `binance_demo`：当前运行模式
 - `binance_live`：未来实盘模式
 
-### AI 模块（规划中）
+### 状态协议
 
-- quant-analyst
-- news-geopolitics
-- macro-advisor
-- commander
+**核心文件**：`commander_status.json`
 
-### 信息系统（规划中）
+| 字段 | 说明 |
+|------|------|
+| overall_status | 总体状态 (ok/warning/degraded/critical) |
+| quant.data_validity | 数据有效性 (true/false) |
+| runtime.target_mode | 目标模式 |
+| runtime.actual_mode | 实际模式 |
+| runtime.degrade_reason | 降级原因 |
 
-未来将逐步接入：
+详见 [PROTOCOL.md](./PROTOCOL.md)
 
-- 国际新闻
-- 宏观经济数据
-- 中国经济统计数据
+### Demo API 降级机制
 
-### Dashboard
-
-Dashboard 当前已接入真实交易数据，后续将继续扩展展示：
-
-- 量化交易数据
-- 新闻分析
-- 宏观分析
-- 系统状态
+当 Demo API 异常时：
+1. 自动检测三条链 (market/account/order)
+2. 连续 3 次失败触发熔断
+3. 降级到 paper 模式
+4. 禁止真实交易
+5. 恢复后自动对账
 
 ---
 
 ## 已完成功能
 
-当前已完成并进入验证阶段的能力包括：
-
-- ✅ Binance API 连接
-- ✅ 获取余额
-- ✅ 获取价格
-- ✅ 挂单
-- ✅ 撤单
-- ✅ 查询订单
+- ✅ Binance Demo API 连接
+- ✅ 获取余额/价格/挂单
+- ✅ 挂单/撤单/查单
 - ✅ 状态同步
-- ✅ quant_report.json 数据生成
-- ✅ Dashboard 看板展示
-- ✅ Demo 账户与看板数据同步
-
----
-
-## 规划中功能
-
-以下为后续扩展方向，当前不作为第一优先级：
-
-- quant-analyst
-- news-geopolitics
-- macro-advisor
-- commander
-- 国际新闻接入与分析
-- 宏观数据接入与分析
-- 中国经济统计数据分析
-- 综合分析报告生成
-- 小资金实盘评估
-
----
-
-## 项目结构
-
-若 README 与实际仓库目录不一致，请以实际代码结构为准。
-
-```
-openclaw-project/
-├── skills/
-│   ├── commander/
-│   ├── quant-analyst/
-│   ├── news-geopolitics/
-│   └── macro-advisor/
-├── scripts/
-│   ├── commander.py
-│   ├── quant_report.py
-│   ├── news_report.py
-│   └── macro_report.py
-├── config/
-│   └── schedules.yaml
-├── data/
-├── logs/
-├── deploy/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── deploy.sh
-├── .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
-```
+- ✅ quant_report.json 生成
+- ✅ commander_status.json 标准化
+- ✅ Dashboard 状态显示
+- ✅ Telegram 今日关注/巡检模板
+- ✅ Demo API 降级与恢复
+- ✅ 单源运行 (scripts/ 唯一源码)
+- ✅ deploy 部署脚本
+- ✅ 健康巡检脚本
 
 ---
 
 ## 快速开始
 
-### 环境要求
-
-- Python 3.10+
-- pip
-- Binance API 凭证（当前建议优先使用 Demo 模式）
-
-### 安装
-
+### 1. 克隆项目
 ```bash
 git clone <你的仓库地址>
 cd openclaw-project
-pip install -r requirements.txt
 ```
 
-### 配置
-
+### 2. 配置
 ```bash
-cp .env.example .env
+# 复制配置
+cp runs/grid_bot/.env.example runs/grid_bot/.env 2>/dev/null || true
+
+# 编辑配置
+vim runs/grid_bot/.env
 ```
 
-编辑 `.env`，填写你的 API Key。
-
-### 启动
-
-```bash
-python3 scripts/commander.py
-```
-
----
-
-## 环境变量
-
-示例：
-
+必需配置：
 ```bash
 BINANCE_API_KEY=your_key
 BINANCE_API_SECRET=your_secret
-BINANCE_MODE=binance_demo
+EXECUTION_MODE=binance_demo
+SYMBOL=BTC/USDT
 ```
 
-### 说明
+### 3. 启动
+```bash
+# 方式1: 直接运行
+cd runs/grid_bot
+python3 bot.py &
 
-- 当前阶段推荐使用 `BINANCE_MODE=binance_demo`
-- `binance_live` 预留给未来实盘模式
-- `.env` 不应提交到 Git
+# 方式2: 使用脚本
+bash deploy/run_bot.sh
+```
+
+### 4. 验证
+```bash
+# 检查状态
+cat data/latest/commander_status.json | python3 -m json.tool
+
+# 查看今日关注
+python3 scripts/commander.py "今天需要注意什么详细版"
+```
 
 ---
 
-## 启动后验证清单
+## 状态查询
 
-系统启动后，建议检查：
+### Telegram 命令
 
-- [ ] Binance API 连接是否正常
-- [ ] 账户余额是否拉取成功
-- [ ] BTC/USDT 最新价格是否更新成功
-- [ ] 挂单 / 撤单 / 查单行为是否正常
-- [ ] 状态同步是否正常
-- [ ] quant_report.json 是否生成成功
-- [ ] Dashboard 是否显示最新交易数据
-- [ ] Dashboard 数据是否与交易所一致
+| 命令 | 输出 |
+|------|------|
+| 今天需要注意什么详细版 | 今日关注详细版 |
+| 系统状态 | 健康巡检 |
+| 运行状态 | Bot 运行状态 |
+
+### 关键指标
+
+- **overall_status**: ok/warning/degraded/critical
+- **data_validity**: true/false
+- **freshness**: fresh/stale/expired/invalid
+
+详见 [PROTOCOL.md](./PROTOCOL.md)
 
 ---
 
 ## 项目原则
 
-- 优先保证系统稳定
-- 交易所数据为真实来源
-- 修改代码前必须先确认当前系统状态
-- 所有改动都需要说明修改内容与验证结果
-- 保持架构一致性，不随意推翻已有结构
+1. **单源运行**：代码只有一份在 `scripts/`
+2. **状态一致**：Telegram/Dashboard/JSON 共用同一套字段
+3. **失败透明**：失败用 null，不用 0 伪装
+4. **文档同步**：改代码后必须更新文档
 
 ---
 
 ## Roadmap
 
-### Phase 1：Demo 验证
+### Phase 1：Demo 验证 (当前)
+- [x] Demo API 连接
+- [x] 降级机制
+- [x] 状态标准化
+- [ ] 持续运行 1-2 个月验证
 
-- [ ] 持续运行 1–2 个月
-- [ ] 验证系统稳定性
-- [ ] 验证订单行为
-- [ ] 验证状态同步
-- [ ] 验证 Dashboard 一致性
+### Phase 2：内容运营 (规划)
+- [ ] 小红书自动化
+- [ ] 公众号内容
+- [ ] 工程化/量化回测分享
 
-### Phase 2：AI 分析模块扩展
-
-- [ ] quant-analyst
-- [ ] news-geopolitics
-- [ ] macro-advisor
-- [ ] commander
-- [ ] 新闻抓取与分析
-- [ ] 宏观数据接入
-- [ ] 经济统计分析
-
-### Phase 3：小资金实盘评估
-
-- [ ] 仅在 Demo 长期稳定后再考虑实盘
-- [ ] 保留 binance_live 用于未来切换
-- [ ] 实盘前优先补强监控、风控与验证机制
+### Phase 3：实盘评估
+- [ ] 小资金实盘
+- [ ] 风控增强
 
 ---
 
 ## 风险提示
 
 - 本项目当前主要用于 Binance Demo Trading 验证
-- 当前阶段重点是 **系统稳定性与数据一致性验证**
 - 本仓库内容不构成任何投资建议
 - 在未完成长期稳定性验证前，不建议直接用于实盘
 
 ---
 
-## 仓库说明
+## 相关文档
 
-- `data/` 为运行数据目录，通常不提交到 Git
-- `logs/` 为运行日志目录，通常不提交到 Git
-- `.env` 为本地私有配置，禁止提交到 Git
-- README 应始终与实际仓库结构和运行状态保持一致
-
----
-
-## 当前目标
-
-持续稳定运行 Demo 系统，观察 1–2 个月，再考虑小资金实盘。
+- [PROTOCOL.md](./PROTOCOL.md) - 状态协议标准
+- [RUN_GUIDE.md](./RUN_GUIDE.md) - 运行指南
