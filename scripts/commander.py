@@ -22,9 +22,20 @@ VAL_NA = None  # 使用 null
 
 
 def detect_mode(user_input):
+    """检测用户意图模式"""
     text = user_input.lower()
-    detail_keywords = ["详细版", "详细看看", "展开", "完整", "具体"]
-    return "detail" if any(k in text for k in detail_keywords) else "simple"
+    
+    # 巡检/健康检查关键词
+    health_keywords = ["系统状态", "巡检", "健康检查", "运行状态", "bot状态", "health", "检查"]
+    # 今日关注详细版关键词
+    detail_keywords = ["今天需要注意什么", "今日关注", "详细版", "今日风险", "今天要注意什么", "今日详细", "综合", "今日摘要"]
+    
+    if any(k in text for k in detail_keywords):
+        return "daily_detail"
+    elif any(k in text for k in health_keywords):
+        return "health_check"
+    else:
+        return "simple"
 
 
 def run_cmd(path):
@@ -372,6 +383,220 @@ def build_report():
     return report
 
 
+
+def check_data_freshness():
+    """检查数据新鲜度"""
+    import os
+    from datetime import datetime
+    
+    quant_file = "/Users/mac/.openclaw/workspace/openclaw-project/data/latest/quant_report.json"
+    
+    if not os.path.exists(quant_file):
+        return {"freshness": "expired", "last_update": None, "age_minutes": None}
+    
+    try:
+        with open(quant_file) as f:
+            data = json.load(f)
+        
+        updated_at = data.get("updated_at", "")
+        if updated_at:
+            dt = datetime.strptime(updated_at, "%Y-%m-%d %H:%M")
+            age_minutes = int((datetime.now() - dt).total_seconds() / 60)
+            
+            if age_minutes < 30:
+                freshness = "fresh"
+            elif age_minutes < 120:
+                freshness = "stale"
+            else:
+                freshness = "expired"
+            
+            return {
+                "freshness": freshness,
+                "last_update": updated_at,
+                "age_minutes": age_minutes
+            }
+    except:
+        pass
+    
+    return {"freshness": "expired", "last_update": None, "age_minutes": None}
+
+
+def format_daily_detail_report(report):
+    """今日关注详细版"""
+    q = report.get("quant", {})
+    n = report.get("news", {})
+    m = report.get("macro", {})
+    s = report.get("system", {})
+    r = report.get("runtime", {})
+    
+    freshness = check_data_freshness()
+    
+    lines = []
+    lines.append("=" * 60)
+    lines.append("📋 今日关注详细版")
+    lines.append("=" * 60)
+    lines.append(f"📅 报告时间：{report.get('generated_at', '')}")
+    lines.append("")
+    
+    # 一、今日重点摘要
+    lines.append("一、今日重点摘要")
+    lines.append("-" * 40)
+    
+    overall = "警告"
+    if freshness["freshness"] == "fresh" and s.get("demo_api", {}).get("connected"):
+        overall = "正常"
+    elif s.get("demo_api", {}).get("connected") == False:
+        overall = "降级"
+    elif freshness["freshness"] == "expired":
+        overall = "警告"
+    
+    emoji = {"正常": "✅", "警告": "⚠️", "降级": "🔴"}
+    lines.append(f"├─ 总体状态：{emoji.get(overall, '❓')} {overall}")
+    
+    if not s.get("demo_api", {}).get("connected"):
+        lines.append(f"├─ 首要问题：Demo API 异常，系统降级运行")
+    elif freshness["freshness"] == "expired":
+        lines.append(f"├─ 首要问题：量化数据过期约 {freshness.get('age_minutes', 0)} 分钟，未自动刷新")
+    elif q.get("data_validity") == False:
+        lines.append(f"├─ 首要问题：量化数据无效")
+    else:
+        lines.append(f"├─ 首要问题：无")
+    
+    lines.append("")
+    
+    # 二、量化交易
+    lines.append("二、量化交易")
+    lines.append("-" * 40)
+    
+    freshness_emoji = {"fresh": "✅", "stale": "⚠️", "expired": "🔴"}
+    lines.append(f"├─ 数据新鲜度：{freshness_emoji.get(freshness['freshness'], '❓')} {freshness['freshness']}")
+    lines.append(f"├─ 最后更新：{freshness.get('last_update', 'N/A')}")
+    lines.append(f"├─ 距今：{freshness.get('age_minutes', 'N/A')} 分钟")
+    
+    if q.get("data_validity"):
+        d = q.get("data", {})
+        lines.append(f"├─ BTC 价格：${d.get('price', 'N/A'):,.2f}" if d.get("price") else f"├─ BTC 价格：N/A")
+        lines.append(f"├─ USDT 余额：{d.get('balance_usdt', 'N/A')}")
+        lines.append(f"├─ BTC 持仓：{d.get('position_btc', 'N/A')}")
+        lines.append(f"├─ 库存层数：{d.get('layers_used', 'N/A')}/{d.get('layers_limit', 'N/A')}")
+        lines.append(f"├─ 资金利用率：{d.get('utilization_pct', 'N/A')}%")
+        lines.append(f"└─ 当前状态：{d.get('status', 'N/A')}")
+    else:
+        lines.append(f"├─ BTC 价格：获取失败")
+        lines.append(f"├─ USDT 余额：获取失败")
+        lines.append(f"├─ BTC 持仓：获取失败")
+        lines.append(f"└─ ⚠️ 原因：量化数据过期或不可用")
+    
+    lines.append("")
+    
+    # 三、新闻与地缘
+    lines.append("三、新闻与地缘")
+    lines.append("-" * 40)
+    if n.get("module_execution_status") == STATUS_EXECUTED:
+        lines.append(f"├─ 状态：已执行")
+        lines.append(f"├─ 模式：{n.get('fetch_mode', 'N/A')}")
+        lines.append(f"└─ 新闻数量：{n.get('article_count', 0)} 条")
+    else:
+        lines.append(f"└─ 📝 暂无关键更新")
+    
+    lines.append("")
+    
+    # 四、宏观环境
+    lines.append("四、宏观环境")
+    lines.append("-" * 40)
+    if m.get("module_execution_status") == STATUS_EXECUTED:
+        lines.append(f"├─ 状态：已执行")
+        lines.append(f"├─ 当前阶段：{m.get('phase', 'N/A')}")
+        lines.append(f"├─ 家庭策略：{m.get('strategy', 'N/A')}")
+        lines.append(f"└─ 一句话建议：{m.get('advice', 'N/A')}")
+    else:
+        lines.append(f"└─ 📝 暂无关键更新")
+    
+    lines.append("")
+    
+    # 五、系统运行
+    lines.append("五、系统运行")
+    lines.append("-" * 40)
+    lines.append(f"├─ Bot 进程：{'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
+    lines.append(f"├─ 目标模式：{r.get('target_mode', 'N/A')}")
+    lines.append(f"├─ 实际模式：{r.get('actual_mode', 'N/A')}")
+    lines.append(f"├─ Demo API：{'✅ 正常' if s.get('demo_api', {}).get('connected') else '❌ 异常'}")
+    
+    if r.get("degrade_reason"):
+        lines.append(f"├─ 降级原因：{r.get('degrade_reason')}")
+        lines.append(f"└─ ⚠️ 系统已降级，不要依据 Demo 数据做交易判断")
+    else:
+        lines.append(f"└─ 降级原因：无")
+    
+    lines.append("")
+    
+    # 六、今日动作建议
+    lines.append("六、今日动作建议")
+    lines.append("-" * 40)
+    
+    suggestions = []
+    
+    if not s.get("demo_api", {}).get("connected"):
+        suggestions.append("1. Demo API 异常，暂不依据 Demo 数据做交易判断")
+        suggestions.append("2. 等待 API 恢复后重启 Bot 触发同步")
+    elif freshness["freshness"] == "expired":
+        suggestions.append("1. ⚠️ 量化数据过期约 3 小时，需立即刷新")
+        suggestions.append("2. 建议重启 Bot 触发 quant_report.json 重新生成")
+        suggestions.append("3. 检查数据刷新钩子是否执行")
+    elif q.get("data_validity") == False:
+        suggestions.append("1. 量化数据无效，需检查生成链")
+        suggestions.append("2. 手动执行 python3 scripts/quant_report.py")
+    else:
+        suggestions.append("1. 系统运行正常，保持当前节奏")
+        suggestions.append("2. 继续观察 Demo API 状态")
+    
+    for suggestion in suggestions:
+        lines.append(f"├─ {suggestion}")
+    
+    lines.append("")
+    lines.append("=" * 60)
+    
+    return "\n".join(lines)
+
+
+def format_health_check_report(report):
+    """巡检报告"""
+    lines = []
+    lines.append("【AI Quant Brain｜健康巡检】")
+    lines.append(f"时间：{report.get('generated_at', '')}")
+    lines.append("")
+    
+    r = report.get("runtime", {})
+    s = report.get("system", {})
+    q = report.get("quant", {})
+    
+    lines.append("【1. 运行路径】")
+    lines.append(f"  runtime_path: {r.get('runtime_path', 'N/A')}")
+    lines.append(f"  代码源: {'✅ 单源' if 'scripts' in str(r.get('runtime_path', '')) else '❌ 异常'}")
+    lines.append("")
+    
+    lines.append("【2. 版本信息】")
+    lines.append(f"  current_commit: {r.get('current_commit', 'N/A')}")
+    lines.append(f"  start_time: {r.get('start_time', 'N/A')}")
+    lines.append(f"  target_mode: {r.get('target_mode', 'N/A')}")
+    lines.append(f"  actual_mode: {r.get('actual_mode', 'N/A')}")
+    lines.append("")
+    
+    can_trade = q.get("data_validity", False)
+    lines.append("【3. 交易安全状态】")
+    lines.append(f"  can_trade: {'✅ 可交易' if can_trade else '❌ 禁止交易'}")
+    if r.get("degrade_reason"):
+        lines.append(f"  降级原因: {r.get('degrade_reason')}")
+    lines.append("")
+    
+    lines.append("【4. Bot 进程】")
+    lines.append(f"  运行状态: {'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
+    lines.append("")
+    
+    lines.append("=" * 60)
+    
+    return "\n".join(lines)
+
 def format_text_report(report):
     """将 JSON 转换为可读文本"""
     q = report["quant"]
@@ -499,10 +724,242 @@ def main(user_input=""):
     with open(output_file, 'w') as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     
-    # 文本输出
-    print(format_text_report(report))
+    # 根据模式输出不同内容
+    if mode == "daily_detail":
+        print(format_daily_detail_report(report))
+    elif mode == "health_check":
+        print(format_health_check_report(report))
+    else:
+        print(format_text_report(report))
 
 
 if __name__ == "__main__":
     user_input = sys.argv[1] if len(sys.argv) > 1 else ""
     main(user_input)
+
+
+def check_data_freshness():
+    """检查数据新鲜度"""
+    import os
+    from datetime import datetime
+    
+    quant_file = "/Users/mac/.openclaw/workspace/openclaw-project/data/latest/quant_report.json"
+    
+    if not os.path.exists(quant_file):
+        return {"freshness": "expired", "last_update": None, "age_minutes": None}
+    
+    try:
+        with open(quant_file) as f:
+            data = json.load(f)
+        
+        updated_at = data.get("updated_at", "")
+        if updated_at:
+            # 解析时间
+            dt = datetime.strptime(updated_at, "%Y-%m-%d %H:%M")
+            age_minutes = int((datetime.now() - dt).total_seconds() / 60)
+            
+            if age_minutes < 30:
+                freshness = "fresh"
+            elif age_minutes < 120:
+                freshness = "stale"
+            else:
+                freshness = "expired"
+            
+            return {
+                "freshness": freshness,
+                "last_update": updated_at,
+                "age_minutes": age_minutes
+            }
+    except:
+        pass
+    
+    return {"freshness": "expired", "last_update": None, "age_minutes": None}
+
+
+def format_daily_detail_report(report):
+    """今日关注详细版"""
+    q = report.get("quant", {})
+    n = report.get("news", {})
+    m = report.get("macro", {})
+    s = report.get("system", {})
+    r = report.get("runtime", {})
+    
+    # 检查数据新鲜度
+    freshness = check_data_freshness()
+    
+    lines = []
+    lines.append("=" * 60)
+    lines.append("📋 今日关注详细版")
+    lines.append("=" * 60)
+    lines.append(f"📅 报告时间：{report.get('generated_at', '')}")
+    lines.append("")
+    
+    # 一、今日重点摘要
+    lines.append("一、今日重点摘要")
+    lines.append("-" * 40)
+    
+    # 判断总体状态
+    overall = "警告"
+    if freshness["freshness"] == "fresh" and s.get("demo_api", {}).get("connected"):
+        overall = "正常"
+    elif s.get("demo_api", {}).get("connected") == False:
+        overall = "降级"
+    elif freshness["freshness"] == "expired":
+        overall = "警告"
+    
+    emoji = {"正常": "✅", "警告": "⚠️", "降级": "🔴"}
+    lines.append(f"├─ 总体状态：{emoji.get(overall, '❓')} {overall}")
+    
+    # 首要问题
+    if not s.get("demo_api", {}).get("connected"):
+        lines.append(f"├─ 首要问题：Demo API 异常，系统降级运行")
+    elif freshness["freshness"] == "expired":
+        lines.append(f"├─ 首要问题：量化数据过期约 {freshness.get('age_minutes', 0)} 分钟，未自动刷新")
+    elif q.get("data_validity") == False:
+        lines.append(f"├─ 首要问题：量化数据无效")
+    else:
+        lines.append(f"├─ 首要问题：无")
+    
+    lines.append("")
+    
+    # 二、量化交易
+    lines.append("二、量化交易")
+    lines.append("-" * 40)
+    
+    # 数据新鲜度
+    freshness_emoji = {"fresh": "✅", "stale": "⚠️", "expired": "🔴"}
+    lines.append(f"├─ 数据新鲜度：{freshness_emoji.get(freshness['freshness'], '❓')} {freshness['freshness']}")
+    lines.append(f"├─ 最后更新：{freshness.get('last_update', 'N/A')}")
+    lines.append(f"├─ 距今：{freshness.get('age_minutes', 'N/A')} 分钟")
+    
+    if q.get("data_validity"):
+        d = q.get("data", {})
+        lines.append(f"├─ BTC 价格：${d.get('price', 'N/A'):,.2f}" if d.get("price") else f"├─ BTC 价格：N/A")
+        lines.append(f"├─ USDT 余额：{d.get('balance_usdt', 'N/A')}")
+        lines.append(f"├─ BTC 持仓：{d.get('position_btc', 'N/A')}")
+        lines.append(f"├─ 库存层数：{d.get('layers_used', 'N/A')}/{d.get('layers_limit', 'N/A')}")
+        lines.append(f"├─ 资金利用率：{d.get('utilization_pct', 'N/A')}%")
+        lines.append(f"└─ 当前状态：{d.get('status', 'N/A')}")
+    else:
+        lines.append(f"├─ BTC 价格：获取失败")
+        lines.append(f"├─ USDT 余额：获取失败")
+        lines.append(f"├─ BTC 持仓：获取失败")
+        lines.append(f"└─ ⚠️ 原因：量化数据过期或不可用")
+    
+    lines.append("")
+    
+    # 三、新闻与地缘
+    lines.append("三、新闻与地缘")
+    lines.append("-" * 40)
+    if n.get("module_execution_status") == STATUS_EXECUTED:
+        lines.append(f"├─ 状态：已执行")
+        lines.append(f"├─ 模式：{n.get('fetch_mode', 'N/A')}")
+        lines.append(f"└─ 新闻数量：{n.get('article_count', 0)} 条")
+    else:
+        lines.append(f"└─ 📝 暂无关键更新")
+    
+    lines.append("")
+    
+    # 四、宏观环境
+    lines.append("四、宏观环境")
+    lines.append("-" * 40)
+    if m.get("module_execution_status") == STATUS_EXECUTED:
+        lines.append(f"├─ 状态：已执行")
+        lines.append(f"├─ 当前阶段：{m.get('phase', 'N/A')}")
+        lines.append(f"├─ 家庭策略：{m.get('strategy', 'N/A')}")
+        lines.append(f"└─ 一句话建议：{m.get('advice', 'N/A')}")
+    else:
+        lines.append(f"└─ 📝 暂无关键更新")
+    
+    lines.append("")
+    
+    # 五、系统运行
+    lines.append("五、系统运行")
+    lines.append("-" * 40)
+    lines.append(f"├─ Bot 进程：{'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
+    lines.append(f"├─ 目标模式：{r.get('target_mode', 'N/A')}")
+    lines.append(f"├─ 实际模式：{r.get('actual_mode', 'N/A')}")
+    lines.append(f"├─ Demo API：{'✅ 正常' if s.get('demo_api', {}).get('connected') else '❌ 异常'}")
+    
+    if r.get("degrade_reason"):
+        lines.append(f"├─ 降级原因：{r.get('degrade_reason')}")
+        lines.append(f"└─ ⚠️ 系统已降级，不要依据 Demo 数据做交易判断")
+    else:
+        lines.append(f"└─ 降级原因：无")
+    
+    lines.append("")
+    
+    # 六、今日动作建议
+    lines.append("六、今日动作建议")
+    lines.append("-" * 40)
+    
+    # 根据状态生成建议
+    suggestions = []
+    
+    if not s.get("demo_api", {}).get("connected"):
+        suggestions.append("1. Demo API 异常，暂不依据 Demo 数据做交易判断")
+        suggestions.append("2. 等待 API 恢复后重启 Bot 触发同步")
+    elif freshness["freshness"] == "expired":
+        suggestions.append("1. ⚠️ 量化数据过期约 3 小时，需立即刷新")
+        suggestions.append("2. 建议重启 Bot 触发 quant_report.json 重新生成")
+        suggestions.append("3. 检查数据刷新钩子是否执行")
+    elif q.get("data_validity") == False:
+        suggestions.append("1. 量化数据无效，需检查生成链")
+        suggestions.append("2. 手动执行 python3 scripts/quant_report.py")
+    else:
+        suggestions.append("1. 系统运行正常，保持当前节奏")
+        suggestions.append("2. 继续观察 Demo API 状态")
+    
+    for s in suggestions:
+        lines.append(f"├─ {s}")
+    
+    lines.append("")
+    lines.append("=" * 60)
+    
+    return "\n".join(lines)
+
+
+def format_health_check_report(report):
+    """巡检报告"""
+    # 复用 health_check.py 的逻辑
+    import subprocess
+    
+    lines = []
+    lines.append("【AI Quant Brain｜健康巡检】")
+    lines.append(f"时间：{report.get('generated_at', '')}")
+    lines.append("")
+    
+    r = report.get("runtime", {})
+    s = report.get("system", {})
+    q = report.get("quant", {})
+    
+    # 运行路径
+    lines.append("【1. 运行路径】")
+    lines.append(f"  runtime_path: {r.get('runtime_path', 'N/A')}")
+    lines.append(f"  代码源: {'✅ 单源' if 'scripts' in str(r.get('runtime_path', '')) else '❌ 异常'}")
+    lines.append("")
+    
+    # 版本信息
+    lines.append("【2. 版本信息】")
+    lines.append(f"  current_commit: {r.get('current_commit', 'N/A')}")
+    lines.append(f"  start_time: {r.get('start_time', 'N/A')}")
+    lines.append(f"  target_mode: {r.get('target_mode', 'N/A')}")
+    lines.append(f"  actual_mode: {r.get('actual_mode', 'N/A')}")
+    lines.append("")
+    
+    # 交易安全
+    can_trade = q.get("data_validity", False)
+    lines.append("【3. 交易安全状态】")
+    lines.append(f"  can_trade: {'✅ 可交易' if can_trade else '❌ 禁止交易'}")
+    if r.get("degrade_reason"):
+        lines.append(f"  降级原因: {r.get('degrade_reason')}")
+    lines.append("")
+    
+    # 进程
+    lines.append("【4. Bot 进程】")
+    lines.append(f"  运行状态: {'✅ 运行中' if s.get('bot', {}).get('running') else '❌ 未运行'}")
+    lines.append("")
+    
+    lines.append("=" * 60)
+    
+    return "\n".join(lines)
