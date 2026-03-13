@@ -37,6 +37,46 @@
 | **源码目录** | `~/openclaw-project/scripts/` |
 | **运行目录** | `~/openclaw-project/runs/grid_bot/` |
 | **状态文件** | `~/openclaw-project/data/latest/` |
+
+---
+
+## Dashboard 数据源
+
+### 数据读取关系
+
+| 组件 | 读取路径 | 数据真源 |
+|------|----------|-----------|
+| **Dashboard** | `../data/latest/*.json` | `data/latest/*.json` |
+| commander.py | 直接写入 | data/latest/commander_status.json |
+| quant_report.py | 直接写入 | data/latest/quant_report.json |
+
+### 关键说明
+
+- Dashboard 直接读取主真源 `data/latest/`
+- 不再需要手工同步
+- 每次 commander/quant_report 执行后，数据自动更新
+
+### 故障排查
+
+如果 Dashboard 显示 "-":
+
+1. 先查主真源是否有数据：
+```bash
+cat ~/openclaw-project/data/latest/commander_status.json | python3 -m json.tool
+```
+
+2. 检查字段是否正确：
+```bash
+# 总体状态
+grep overall_status ~/openclaw-project/data/latest/commander_status.json
+
+# 量化数据
+grep price_usd ~/openclaw-project/data/latest/quant_report.json
+```
+
+3. 如果主真源有数据但 Dashboard 显示 "-"，检查：
+- Dashboard 服务是否运行
+- 浏览器缓存
 | **日志目录** | `~/openclaw-project/logs/` |
 
 ---

@@ -321,10 +321,10 @@
         async function loadData() {
             try {
                 const [commander, quant, news, macro] = await Promise.all([
-                    fetch('data/latest/commander_status.json').then(r => r.json()),
-                    fetch('data/latest/quant_report.json').then(r => r.json()),
-                    fetch('data/latest/news_report.json').then(r => r.json()),
-                    fetch('data/latest/macro_report.json').then(r => r.json())
+                    fetch('../data/latest/commander_status.json').then(r => r.json()),
+                    fetch('../data/latest/quant_report.json').then(r => r.json()),
+                    fetch('../data/latest/news_report.json').then(r => r.json()),
+                    fetch('../data/latest/macro_report.json').then(r => r.json())
                 ]);
                 
                 // 更新时间 (兼容新旧字段)
