@@ -320,6 +320,11 @@ def generate_actions(quant, demo_status):
 
 def calculate_overall_status(quant, demo_status):
     """计算总体状态"""
+    # 首先检查数据有效性
+    data_validity = quant.get("data_validity", False)
+    if not data_validity:
+        return "warning"
+    
     if not demo_status["connected"]:
         return "degraded"
     if quant.get("data", {}).get("status") == "critical":
