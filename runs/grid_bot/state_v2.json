@@ -1,0 +1,34 @@
+{
+  "anchor_price": 71532.0,
+  "open_buy_orders": [],
+  "positions": [
+    {
+      "position_id": "pos_core_1773204944754",
+      "strategy": "core",
+      "amount": 0.014250489112412562,
+      "entry_price": 70173.03,
+      "opened_ts": 1773204944.754674,
+      "note": "core_rebalance_buy",
+      "highest_price": 70173.03
+    }
+  ],
+  "realized_pnl_quote": 26.44153901932813,
+  "fees_paid_quote": 4.142093142209638,
+  "equity_peak": 5049.91943683159,
+  "pause_until_ts": 1773411983.619381,
+  "crash_mode_until_ts": null,
+  "today_start_equity": 5021.776660527452,
+  "today_pnl_quote": -5021.776660527452,
+  "last_action_ts": "2026-03-13T08:26:23.619412+00:00",
+  "bot_start_ts": 1773204943.774836,
+  "last_equity_quote": 0.0,
+  "paper_quote_balance": 0,
+  "paper_base_balance": 0,
+  "paper_reserved_quote": 1764.1036201652103,
+  "last_regime": "RANGE",
+  "last_regime_reason": "neutral",
+  "last_core_rebalance_ts": 1773380985.233231,
+  "last_breakout_entry_ts": null,
+  "last_heartbeat_ts": 1773380985.23329,
+  "_last_day": "2026-03-13"
+}
