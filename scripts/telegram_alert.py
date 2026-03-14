@@ -34,8 +34,18 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 ALERT_COOLDOWN = 3600  # 1小时内不重复告警
 RECOVERY_COOLDOWN = 1800  # 30分钟内不重复恢复通知
 
-# Dashboard 数据健康检查
-DASHBOARD_DATA_MAX_AGE = 300  # 数据最大5分钟未更新
+# Dashboard 数据健康检查 - 分层 freshness 规则
+# 与 health_check.py 保持一致的分层逻辑
+# 高频文件: quant_report.json (交易主链) - 120min 内为正常
+# 中频文件: commander_status.json (系统状态) - 240min 内为正常
+# 低频文件: news_report.json, macro_report.json (资讯/宏观) - 1440min 内为正常
+
+DASHBOARD_DATA_THRESHOLDS = {
+    "quant_report.json": 7200,        # 120 分钟 - 与 health_check "过期" 阈值一致
+    "commander_status.json": 14400,   # 240 分钟 - 与 health_check "较旧" 阈值一致
+    "news_report.json": 86400,        # 24 小时 - 低频资讯
+    "macro_report.json": 86400,       # 24 小时 - 低频宏观
+}
 
 
 def load_alert_state():
@@ -112,11 +122,12 @@ def check_dashboard_health():
             issues.append(f"{filename} 不存在")
             continue
         
-        # 检查文件是否过期 (超过5分钟)
+        # 检查文件是否过期 (按文件类别区分阈值)
         mtime = os.path.getmtime(filepath)
         age_seconds = now - mtime
+        threshold = DASHBOARD_DATA_THRESHOLDS.get(filename, 300)
         
-        if age_seconds > DASHBOARD_DATA_MAX_AGE:
+        if age_seconds > threshold:
             age_min = int(age_seconds / 60)
             issues.append(f"{filename} 已过期 ({age_min}分钟)")
     
