@@ -140,16 +140,17 @@ def generate_morning_report():
     
     # 1. 运行路径
     lines.append("【1. 运行路径】")
-    lines.append(f"  runtime_path: {get_runtime_path()}")
+    lines.append(f"  运行文件: {get_runtime_path()}")
     lines.append(f"  代码源: scripts/grid_bot.py ✅" if "scripts" in get_runtime_path() else f"  代码源: ⚠️ 异常")
     lines.append("")
     
     # 2. 版本信息
     lines.append("【2. 版本信息】")
-    lines.append(f"  current_commit: {runtime.get('current_commit', 'unknown')}")
-    lines.append(f"  start_time: {runtime.get('start_time', 'unknown')}")
-    lines.append(f"  target_mode: {runtime.get('target_mode', 'unknown')}")
-    lines.append(f"  actual_mode: {runtime.get('actual_mode', 'unknown')}")
+    commit = runtime.get('current_commit', 'unknown')
+    lines.append(f"  当前版本: {commit[:7] if commit and len(commit) >= 7 else commit}")
+    lines.append(f"  启动时间: {runtime.get('start_time', 'unknown')}")
+    lines.append(f"  目标模式: {runtime.get('target_mode', 'unknown')}")
+    lines.append(f"  实际模式: {runtime.get('actual_mode', 'unknown')}")
     lines.append("")
     
     # 3. 交易安全状态
@@ -157,7 +158,7 @@ def generate_morning_report():
     degrade_reason = runtime.get("degrade_reason", "")
     
     lines.append("【3. 交易安全状态】")
-    lines.append(f"  can_trade: {'✅ 可交易' if can_trade else '❌ 禁止交易'}")
+    lines.append(f"  交易权限: {'✅ 可交易' if can_trade else '❌ 禁止交易'}")
     
     if degrade_reason:
         lines.append(f"  降级原因: {degrade_reason}")
@@ -170,14 +171,32 @@ def generate_morning_report():
     lines.append("【4. Bot 进程】")
     lines.append(f"  运行状态: {'✅ 运行中' if bot['running'] else '❌ 未运行'}")
     if bot['running']:
-        lines.append(f"  PID: {bot['pid']}")
+        lines.append(f"  进程ID: {bot['pid']}")
     lines.append("")
     
-    # 5. 状态文件
+    # 5. 状态文件 - 使用新的 freshness 规则
     lines.append("【5. 状态文件】")
     for f, info in files.items():
         if info['exists']:
-            lines.append(f"  {f}: ✅ {info['update_time']} ({info['age_minutes']}分钟前)")
+            # 判断文件 freshness
+            age = info['age_minutes']
+            if f in ['news_report.json', 'macro_report.json']:
+                # 低频模块特殊处理
+                if age < 60:
+                    status = "✅ 今日已更新"
+                elif age < 1440:  # < 24小时
+                    status = "🟡 昨日缓存"
+                else:
+                    status = "⚠️ 超时未更新"
+            else:
+                # 高频模块
+                if age < 30:
+                    status = f"✅ 正常 ({age}分钟前)"
+                elif age < 120:
+                    status = f"🟡 过期 ({age}分钟前)"
+                else:
+                    status = f"⚠️ 超时 ({age}分钟前)"
+            lines.append(f"  {f}: {status}")
         else:
             lines.append(f"  {f}: ❌ 不存在")
     lines.append("")

@@ -50,12 +50,14 @@ def check_and_run_tasks():
     now = datetime.now()
     
     for task in TASKS:
-        if now.hour == task["hour"] and now.minute == task["minute"]:
+        # 精确匹配：当前分钟等于任务分钟，且在最近30秒内
+        if now.hour == task["hour"] and now.minute == task["minute"] and now.second < 30:
             # 避免同一分钟内重复执行
             last_run = getattr(check_and_run_tasks, "last_run", {})
             key = f"{task['name']}_{now.date()}"
             
             if last_run.get(key, "") != f"{now.hour}:{now.minute}":
+                print(f"⏰ 触发 {task['name']}...")
                 run_task(task)
                 last_run[key] = f"{now.hour}:{now.minute}"
                 check_and_run_tasks.last_run = last_run
