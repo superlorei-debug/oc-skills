@@ -129,19 +129,55 @@
 - Commit: e8e41f3
 - 状态: 已归档
 
+### 事件 #4: Telegram 告警链 freshness 统一
+- Commit: 63c56e5
+- 状态: 已修复
+- 说明: telegram_alert.py 与 health_check.py 阈值边界已统一
+
 ---
 
 ## 九、版本锚点
 
 - **基线版本**: stable-observe-2026-03-14
 - **基线 Commit**: 1e16b43
-- **最新 Commit**: e8e41f3
+- **最新 Commit**: 63c56e5
 
 ---
 
-## 十、归档结论
+## 十、freshness / 告警链收口结论
 
-2026-03-14 当日版本已完成收口，AI Quant Brain 当前进入稳定观察期；主量化链正常，巡检链恢复，旁路评估链恢复，宏观数据暂只停留在展示/报告/advisor 层；除单点故障修复外，不再继续扩展。
+### 问题描述
+23:04 告警中 quant_report.json 仅 19 分钟却被判为"已过期"
+
+### 根因
+telegram_alert.py 使用旧逻辑：硬编码 5 分钟阈值，所有文件统一判断
+
+### 修复
+- health_check.py: 已分层 (commit 61e68db)
+- telegram_alert.py: 改为分层阈值 (commit 63c56e5)
+
+### 分层职责
+- health_check.py: 细分检查层，区分正常/过期/缓存/超时/较旧
+- telegram_alert.py: 告警输出层，判断是否告警
+
+### 统一阈值
+| 文件 | 阈值 | 说明 |
+|------|------|------|
+| quant_report.json | 30 分钟 | 交易主链严格标准 |
+| commander_status.json | 240 分钟 | 系统状态 |
+| news_report.json | 1440 分钟 | 低频资讯 |
+| macro_report.json | 1440 分钟 | 低频宏观 |
+
+### 正式口径
+- 阈值边界一致
+- 告警触发点一致
+- 文案风格不同属于设计分层，不属于逻辑不一致
+
+---
+
+## 十一、归档结论
+
+2026-03-14 当日版本已完成收口，AI Quant Brain 当前进入稳定观察期；主量化链正常，巡检链恢复，旁路评估链恢复，freshness/告警链已分层统一；除单点故障修复外，不再继续扩展。
 
 ---
 
