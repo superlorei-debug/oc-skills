@@ -174,28 +174,53 @@ def generate_morning_report():
         lines.append(f"  进程ID: {bot['pid']}")
     lines.append("")
     
-    # 5. 状态文件 - 使用新的 freshness 规则
+    # 5. 状态文件 - 分层 freshness 规则
+    # 分类: 高频(交易主链) / 中频(状态) / 低频(资讯/宏观)
     lines.append("【5. 状态文件】")
     for f, info in files.items():
         if info['exists']:
-            # 判断文件 freshness
             age = info['age_minutes']
-            if f in ['news_report.json', 'macro_report.json']:
-                # 低频模块特殊处理
-                if age < 60:
-                    status = "✅ 今日已更新"
-                elif age < 1440:  # < 24小时
-                    status = "🟡 昨日缓存"
-                else:
-                    status = "⚠️ 超时未更新"
-            else:
-                # 高频模块
+            
+            # 高频文件: quant_report.json (交易主链)
+            if f == 'quant_report.json':
                 if age < 30:
                     status = f"✅ 正常 ({age}分钟前)"
                 elif age < 120:
                     status = f"🟡 过期 ({age}分钟前)"
                 else:
                     status = f"⚠️ 超时 ({age}分钟前)"
+            
+            # 中频文件: commander_status.json (系统状态)
+            elif f == 'commander_status.json':
+                if age < 60:
+                    status = f"✅ 正常 ({age}分钟前)"
+                elif age < 240:  # < 4小时
+                    status = f"🟡 缓存 ({age}分钟前)"
+                elif age < 720:  # < 12小时
+                    status = f"⚠️ 较旧 ({age}分钟前)"
+                else:
+                    status = f"⚠️ 超时 ({age}分钟前)"
+            
+            # 低频文件: news_report.json, macro_report.json (资讯/宏观)
+            elif f in ['news_report.json', 'macro_report.json']:
+                if age < 60:
+                    status = "✅ 今日已更新"
+                elif age < 1440:  # < 24小时
+                    status = f"🟡 缓存 ({age}分钟前)"
+                elif age < 4320:  # < 3天
+                    status = f"⚠️ 较旧 ({age}分钟前)"
+                else:
+                    status = f"⚠️ 超时 ({age}分钟前)"
+            
+            # 其他文件
+            else:
+                if age < 30:
+                    status = f"✅ 正常 ({age}分钟前)"
+                elif age < 120:
+                    status = f"🟡 过期 ({age}分钟前)"
+                else:
+                    status = f"⚠️ 超时 ({age}分钟前)"
+            
             lines.append(f"  {f}: {status}")
         else:
             lines.append(f"  {f}: ❌ 不存在")
