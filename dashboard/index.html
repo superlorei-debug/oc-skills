@@ -152,7 +152,7 @@
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
-                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news.fetch_mode">-</div></div>
+                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">-</div></div>
                 </div>
                 <div id="news-list"><div class="empty-state"><div class="empty-state-icon">📰</div><div class="empty-state-text">暂无关键新闻</div></div></div>
             </div>
@@ -315,10 +315,26 @@
                 
                 if (news) {
                     document.getElementById('news-count').textContent = news.today_news_count || 0;
-                    document.getElementById('news-high-confidence').textContent = news.high_confidence_count || 0;
-                    document.getElementById('news.fetch_mode').textContent = news.fetch_mode || '-';
+                    document.getElementById('news-high-confidence').textContent = news.high_cred_today_count || 0;
+                    document.getElementById('news-mode').textContent = news.fetch_mode || '-';
                     document.getElementById('news-update-time').textContent = news.updated_at || '-';
-                    if (news.summary?.length > 0) document.getElementById('news-list').innerHTML = news.summary.slice(0,3).map(n => `<div class="news-item"><div class="news-title">${n.title||'-'}</div><div class="news-meta"><span>${n.source||'-'}</span><span>${n.time||'-'}</span></div><div class="news-impact">${n.summary||'-'}</div></div>`).join('');
+                    
+                    // 新闻状态标签
+                    var ntag = document.getElementById('news-status-tag');
+                    if (news.fetch_status == '正常') {
+                        ntag.className = 'status-tag status-ok';
+                        ntag.textContent = '正常';
+                    } else if (news.fetch_status == '过滤后为空') {
+                        ntag.className = 'status-tag status-info';
+                        ntag.textContent = '无关键新闻';
+                    } else {
+                        ntag.className = 'status-tag status-warning';
+                        ntag.textContent = '抓取失败';
+                    }
+                    
+                    if (news.today_news && news.today_news.length > 0) {
+                        document.getElementById('news-list').innerHTML = news.today_news.slice(0,3).map(function(n){return '<div class="news-item"><div class="news-title">'+(n.title||'-')+'</div><div class="news-meta"><span>'+(n.source||'-')+'</span><span>'+(n.credibility||'-')+'</span></div></div>'}).join('');
+                    }
                 }
                 
                 if (macro) {
