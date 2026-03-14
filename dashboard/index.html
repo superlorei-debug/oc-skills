@@ -152,7 +152,7 @@
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
-                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">-</div></div>
+                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news.fetch_mode">-</div></div>
                 </div>
                 <div id="news-list"><div class="empty-state"><div class="empty-state-icon">📰</div><div class="empty-state-text">暂无关键新闻</div></div></div>
             </div>
@@ -314,9 +314,9 @@
                 }
                 
                 if (news) {
-                    document.getElementById('news-count').textContent = news.news_count || 0;
+                    document.getElementById('news-count').textContent = news.today_news_count || 0;
                     document.getElementById('news-high-confidence').textContent = news.high_confidence_count || 0;
-                    document.getElementById('news-mode').textContent = news.mode || '-';
+                    document.getElementById('news.fetch_mode').textContent = news.fetch_mode || '-';
                     document.getElementById('news-update-time').textContent = news.updated_at || '-';
                     if (news.summary?.length > 0) document.getElementById('news-list').innerHTML = news.summary.slice(0,3).map(n => `<div class="news-item"><div class="news-title">${n.title||'-'}</div><div class="news-meta"><span>${n.source||'-'}</span><span>${n.time||'-'}</span></div><div class="news-impact">${n.summary||'-'}</div></div>`).join('');
                 }

@@ -190,5 +190,45 @@ def format_output():
     print()
     print("="*50)
 
+def generate_json():
+    """生成 JSON 报告"""
+    news, mode = fetch_news()
+    
+    # 统计
+    today_news = [n for n in news if n.get("is_today", False)]
+    today_high = len([n for n in today_news if n.get("credibility") == "高"])
+    total_fetched = len(news)
+    
+    risk_level = get_risk_level(news)
+    summary = generate_summary(news)
+    
+    # 判断状态
+    if mode == "无数据" or total_fetched == 0:
+        fetch_status = "抓取失败"
+    elif len(today_news) == 0:
+        fetch_status = "过滤后为空"
+    else:
+        fetch_status = "正常"
+    
+    result = {
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "fetch_mode": mode,
+        "fetch_status": fetch_status,
+        "total_fetched": total_fetched,
+        "today_news_count": len(today_news),
+        "high_cred_today_count": today_high,
+        "risk_level": risk_level,
+        "summary": summary,
+        "status_detail": f"原始抓取 {total_fetched} 条，过滤后 {len(today_news)} 条" if total_fetched > 0 else "抓取失败，请检查网络或 RSS 源",
+        "today_news": today_news[:5],
+        "recent_news": news[:10]
+    }
+    
+    return result
+
 if __name__ == "__main__":
-    format_output()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--json":
+        print(json.dumps(generate_json(), ensure_ascii=False, indent=2))
+    else:
+        format_output()
