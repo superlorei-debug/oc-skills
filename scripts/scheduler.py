@@ -29,7 +29,7 @@ def run_task(task):
     log_file = f"{LOG_DIR}/{task['name']}.log"
     os.makedirs(LOG_DIR, exist_ok=True)
     
-    cmd = ["/usr/bin/python3", f"{PROJECT_DIR}/{task['script']}"] + task["args"]
+    cmd = ["/usr/local/bin/python3", f"{PROJECT_DIR}/{task['script']}"] + task["args"]
     
     try:
         with open(log_file, "a") as f:
@@ -66,7 +66,7 @@ def alert_check_loop():
     """告警检查循环 - 每15分钟"""
     while True:
         try:
-            cmd = ["/usr/bin/python3", f"{PROJECT_DIR}/scripts/telegram_alert.py", "--check"]
+            cmd = ["/usr/local/bin/python3", f"{PROJECT_DIR}/scripts/telegram_alert.py", "--check"]
             result = subprocess.run(cmd, cwd=PROJECT_DIR, capture_output=True, timeout=60)
             if result.returncode == 0:
                 print(f"✅ 告警检查完成")
