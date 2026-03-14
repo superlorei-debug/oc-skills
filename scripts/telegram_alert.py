@@ -36,13 +36,13 @@ RECOVERY_COOLDOWN = 1800  # 30分钟内不重复恢复通知
 
 # Dashboard 数据健康检查 - 分层 freshness 规则
 # 与 health_check.py 保持一致的分层逻辑
-# 高频文件: quant_report.json (交易主链) - 120min 内为正常
-# 中频文件: commander_status.json (系统状态) - 240min 内为正常
-# 低频文件: news_report.json, macro_report.json (资讯/宏观) - 1440min 内为正常
+# 高频文件: quant_report.json (交易主链) - 30min 内正常，超 30min 告警
+# 中频文件: commander_status.json (系统状态) - 240min 内正常，超 240min 告警
+# 低频文件: news_report.json, macro_report.json (资讯/宏观) - 1440min 内正常
 
 DASHBOARD_DATA_THRESHOLDS = {
-    "quant_report.json": 7200,        # 120 分钟 - 与 health_check "过期" 阈值一致
-    "commander_status.json": 14400,   # 240 分钟 - 与 health_check "较旧" 阈值一致
+    "quant_report.json": 1800,        # 30 分钟 - 交易主链严格阈值
+    "commander_status.json": 14400,   # 240 分钟 - 系统状态
     "news_report.json": 86400,        # 24 小时 - 低频资讯
     "macro_report.json": 86400,       # 24 小时 - 低频宏观
 }
