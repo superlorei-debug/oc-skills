@@ -265,13 +265,17 @@ systemctl start grid-bot
 
 ### 9.1 当前是否具备上线准备基础
 
-**是**，当前 master 已具备以下条件：
-- ✅ 量化主链稳定运行
-- ✅ Dashboard V2 可用
-- ✅ Telegram 巡检/告警可用
-- ✅ freshness 分层统一
-- ✅ 分支规划完成
-- ⚠️ 仍需服务器环境准备
+**当前 master 已具备未来部署基座条件；待稳定观察期完成后，再从 master 拉出 release/prod-prep 进入服务器上线准备阶段。**
+
+| 检查项 | 状态 |
+|--------|------|
+| 量化主链 | ✅ 可用 |
+| Dashboard | ✅ 可用 |
+| Telegram 巡检 | ✅ 可用 |
+| Telegram 告警 | ✅ 可用 |
+| freshness 分层 | ✅ 统一 |
+| 分支规划 | ✅ 完成 |
+| 服务器环境 | ⚠️ 待准备 |
 
 ### 9.2 下一步建议
 
