@@ -13,6 +13,10 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv('/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/.env')
+
 # 路径配置
 PROJECT_DIR = "/Users/mac/.openclaw/workspace/openclaw-project"
 DATA_DIR = f"{PROJECT_DIR}/data/latest"

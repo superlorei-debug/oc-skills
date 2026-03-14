@@ -10,6 +10,11 @@ import subprocess
 import requests
 from datetime import datetime, timedelta
 
+# 加载环境变量
+from dotenv import load_dotenv
+env_path = "/Users/mac/.openclaw/workspace/openclaw-project/runs/grid_bot/.env"
+load_dotenv(env_path)
+
 # 路径配置
 PROJECT_DIR = "/Users/mac/.openclaw/workspace/openclaw-project"
 DATA_DIR = f"{PROJECT_DIR}/data/latest"
