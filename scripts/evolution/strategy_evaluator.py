@@ -23,10 +23,11 @@ def load_data():
     for fname in ['commander_status.json', 'quant_report.json', 'news_report.json', 'macro_report.json']:
         try:
             with open(f"{LATEST_DIR}/{fname}") as f:
-                key = fname.replace('.json', '').replace('_status', '')
+                # 保持原文件名作为key
+                key = fname.replace('.json', '')
                 data[key] = json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"Warning: Failed to load {fname}: {e}", file=sys.stderr)
     
     return data
 
