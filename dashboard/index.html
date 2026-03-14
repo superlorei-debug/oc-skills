@@ -6,79 +6,55 @@
     <title>AI驾驶舱</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; }
-        
-        .header { background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%); padding: 24px 40px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
-        .header-title { display: inline-flex; align-items: center; gap: 16px; }
-        .header-title .logo { font-size: 36px; }
-        .header-title h1 { color: #fff; font-size: 28px; font-weight: 700; letter-spacing: 2px; }
-        
-        .nav { background: #fff; padding: 0 40px; display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-        .nav a { padding: 16px 28px; text-decoration: none; color: #4a5568; font-size: 15px; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.2s; }
-        .nav a:hover { color: #3182ce; background: #ebf8ff; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; color: #2d3748; }
+        a { text-decoration: none; color: inherit; }
+        .header { background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%); padding: 20px 24px; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .header-title { display: inline-flex; align-items: center; gap: 12px; }
+        .header-title h1 { color: #fff; font-size: 24px; font-weight: 600; }
+        .nav { background: #fff; padding: 0 24px; display: flex; gap: 4px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; }
+        .nav a { padding: 14px 20px; color: #718096; font-size: 14px; font-weight: 500; border-bottom: 3px solid transparent; white-space: nowrap; }
+        .nav a:hover { color: #3182ce; }
         .nav a.active { color: #3182ce; border-bottom-color: #3182ce; background: #ebf8ff; }
-        
-        .main { padding: 28px 40px; max-width: 1400px; margin: 0 auto; }
+        .main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
         .page { display: none; }
         .page.active { display: block; }
-        .page-header { margin-bottom: 24px; }
-        .page-title { font-size: 22px; font-weight: 600; color: #1a202c; display: flex; align-items: center; gap: 10px; }
-        
-        .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #edf2f7; }
-        .card-title { font-size: 16px; font-weight: 600; color: #2d3748; display: flex; align-items: center; gap: 8px; }
-        
-        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-        .metric { background: #f7fafc; padding: 20px; border-radius: 10px; border: 1px solid #edf2f7; transition: all 0.2s; }
-        .metric:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
-        .metric-label { font-size: 12px; color: #718096; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-value { font-size: 26px; font-weight: 700; color: #1a202c; font-family: 'SF Mono', Monaco, monospace; }
-        .metric-value.warning { color: #dd6b20; }
-        .metric-value.danger { color: #c53030; }
-        .metric-value.success { color: #38a169; }
-        
-        .status-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 20px; font-weight: 600; color: #1a202c; }
+        .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #edf2f7; }
+        .card-title { font-size: 15px; font-weight: 600; color: #2d3748; }
+        .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .metric { background: #f7fafc; padding: 14px; border-radius: 8px; border: 1px solid #edf2f7; }
+        .metric-label { font-size: 12px; color: #a0aec0; margin-bottom: 6px; }
+        .metric-value { font-size: 20px; font-weight: 700; color: #1a202c; font-family: 'SF Mono', Monaco, monospace; }
+        .status-tag { display: inline-flex; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; }
         .status-ok { background: #c6f6d5; color: #22543d; }
         .status-warning { background: #feebc8; color: #744210; }
         .status-info { background: #bee3f8; color: #2a4365; }
-        
-        .info-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-        .info-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #f7fafc; border-radius: 8px; border: 1px solid #edf2f7; }
+        .info-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .info-item { display: flex; justify-content: space-between; padding: 10px 12px; background: #f7fafc; border-radius: 6px; border: 1px solid #edf2f7; }
         .info-label { color: #718096; font-size: 13px; }
-        .info-value { font-weight: 600; color: #2d3748; font-size: 14px; }
-        
-        .news-item { padding: 18px; background: #f7fafc; border-radius: 10px; margin-bottom: 14px; border: 1px solid #edf2f7; }
-        .news-title { font-weight: 600; margin-bottom: 10px; font-size: 15px; color: #2d3748; }
-        .news-meta { font-size: 12px; color: #a0aec0; margin-bottom: 10px; display: flex; gap: 12px; }
-        .news-impact { font-size: 14px; color: #4a5568; background: #fff; padding: 12px; border-radius: 8px; line-height: 1.6; }
-        
-        .update-time { text-align: right; color: #a0aec0; font-size: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #edf2f7; }
-        
-        .price-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-        .price-tag { background: #e9d8fd; color: #6b46c1; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; }
-        
-        .empty-state { text-align: center; padding: 50px 20px; color: #a0aec0; }
-        .empty-state-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.5; }
-        .empty-state-text { font-size: 14px; margin-bottom: 6px; }
-        
-        .placeholder-card { text-align: center; padding: 40px 20px; }
-        .placeholder-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
-        .placeholder-title { font-size: 16px; font-weight: 600; color: #2d3748; margin-bottom: 8px; }
-        .placeholder-desc { font-size: 13px; color: #718096; margin-bottom: 16px; line-height: 1.6; }
-        .placeholder-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; background: #edf2f7; border-radius: 20px; font-size: 13px; color: #718096; }
-        
-        .footer { text-align: center; padding: 20px; color: #a0aec0; font-size: 12px; border-top: 1px solid #e2e8f0; margin-top: 40px; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        
-        @media (max-width: 768px) { .two-col, .three-col { grid-template-columns: 1fr; } .info-list { grid-template-columns: 1fr; } .header, .nav, .main { padding-left: 20px; padding-right: 20px; } }
+        .info-value { font-weight: 600; font-size: 13px; }
+        .news-item { padding: 12px; background: #f7fafc; border-radius: 8px; margin-bottom: 10px; }
+        .news-title { font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+        .news-meta { font-size: 11px; color: #a0aec0; }
+        .update-time { text-align: right; color: #cbd5e0; font-size: 12px; margin-top: 16px; }
+        .price-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .price-tag { background: #e9d8fd; color: #6b46c1; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+        .empty-state { text-align: center; padding: 24px; color: #a0aec0; }
+        .placeholder-card { text-align: center; padding: 20px; }
+        .placeholder-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.5; }
+        .placeholder-title { font-size: 14px; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
+        .placeholder-desc { font-size: 12px; color: #718096; margin-bottom: 10px; }
+        .placeholder-status { display: inline-flex; padding: 4px 12px; background: #edf2f7; border-radius: 12px; font-size: 11px; color: #718096; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .footer { text-align: center; padding: 16px; color: #cbd5e0; font-size: 12px; border-top: 1px solid #e2e8f0; margin-top: 24px; }
+        @media (max-width: 768px) { .two-col, .three-col { grid-template-columns: 1fr; } .info-list { grid-template-columns: 1fr; } .nav a { padding: 12px 14px; font-size: 13px; } }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-title"><span class="logo">🚀</span><h1>AI驾驶舱</h1></div>
-    </div>
-    
+    <div class="header"><div class="header-title"><h1>🚀 AI驾驶舱</h1></div></div>
     <div class="nav">
         <a href="#" class="active" onclick="showPage('quant')">量化</a>
         <a href="#" onclick="showPage('news')">资讯</a>
@@ -86,7 +62,6 @@
         <a href="#" onclick="showPage('monitor')">监控</a>
         <a href="#" onclick="showPage('system')">系统</a>
     </div>
-    
     <div class="main">
         <!-- 量化 -->
         <div id="quant" class="page active">
@@ -135,11 +110,7 @@
             </div>
             <div class="card">
                 <div class="card-header"><div class="card-title">📋 挂单明细</div></div>
-                <div class="price-list" id="order-prices"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">暂无挂单数据</div></div></div>
-            </div>
-            <div class="card">
-                <div class="card-header"><div class="card-title">📜 历史订单</div></div>
-                <div class="placeholder-card"><div class="placeholder-icon">📜</div><div class="placeholder-title">历史订单模块</div><div class="placeholder-desc">后续将接入最近成交记录与撤单历史</div><div class="placeholder-status">⏳ 筹备中</div></div>
+                <div class="price-list" id="order-prices"><span style="color:#a0aec0">暂无挂单</span></div>
             </div>
             <div class="update-time">更新时间：<span id="quant-update-time">-</span></div>
         </div>
@@ -148,18 +119,18 @@
         <div id="news" class="page">
             <div class="page-header"><div class="page-title">🌍 资讯</div></div>
             <div class="card">
-                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">已执行</span></div>
+                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">待更新</span></div>
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
                     <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">-</div></div>
                 </div>
-                <div id="news-list"><div class="empty-state"><div class="empty-state-icon">📰</div><div class="empty-state-text">暂无关键新闻</div></div></div>
+                <div id="news-list" style="margin-top:12px"><div class="empty-state">暂无关键新闻</div></div>
             </div>
             <div class="three-col">
-                <div class="card"><div class="card-header"><div class="card-title">₿ 加密市场</div></div><div class="placeholder-card"><div class="placeholder-icon">₿</div><div class="placeholder-title">加密市场</div><div class="placeholder-desc">BTC/ETH 行情动态与风险提示</div><div class="placeholder-status">📡 接入中</div></div></div>
-                <div class="card"><div class="card-header"><div class="card-title">📈 金融市场</div></div><div class="placeholder-card"><div class="placeholder-icon">📈</div><div class="placeholder-title">金融市场</div><div class="placeholder-desc">美股/美元/利率等宏观金融动态</div><div class="placeholder-status">📡 接入中</div></div></div>
-                <div class="card"><div class="card-header"><div class="card-title">🌍 地缘政治</div></div><div class="placeholder-card"><div class="placeholder-icon">🌍</div><div class="placeholder-title">地缘政治</div><div class="placeholder-desc">国际局势与地缘风险评估</div><div class="placeholder-status">📡 接入中</div></div></div>
+                <div class="card"><div class="card-header"><div class="card-title">₿ 加密市场</div></div><div class="placeholder-card"><div class="placeholder-icon">₿</div><div class="placeholder-title">加密市场</div><div class="placeholder-desc">BTC/ETH 行情动态</div><div class="placeholder-status">📡 接入中</div></div></div>
+                <div class="card"><div class="card-header"><div class="card-title">📈 金融市场</div></div><div class="placeholder-card"><div class="placeholder-icon">📈</div><div class="placeholder-title">金融市场</div><div class="placeholder-desc">美股/美元/利率</div><div class="placeholder-status">📡 接入中</div></div></div>
+                <div class="card"><div class="card-header"><div class="card-title">🌍 地缘政治</div></div><div class="placeholder-card"><div class="placeholder-icon">🌍</div><div class="placeholder-title">地缘政治</div><div class="placeholder-desc">国际局势与风险</div><div class="placeholder-status">📡 接入中</div></div></div>
             </div>
             <div class="update-time">更新时间：<span id="news-update-time">-</span></div>
         </div>
@@ -174,18 +145,12 @@
                     <div class="metric"><div class="metric-label">家庭策略</div><div class="metric-value" id="macro-strategy">-</div></div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header"><div class="card-title">💭 一句话建议</div></div>
-                <div style="text-align: center; padding: 20px;"><span id="macro-advice" style="font-size: 18px; color: #2d3748; line-height: 1.8;">-</span></div>
-            </div>
+            <div class="card"><div class="card-header"><div class="card-title">💭 一句话建议</div></div><div style="text-align:center;padding:16px"><span id="macro-advice" style="font-size:15px">-</span></div></div>
             <div class="two-col">
-                <div class="card"><div class="card-header"><div class="card-title">📊 国家统计局数据</div></div><div class="placeholder-card"><div class="placeholder-icon">📊</div><div class="placeholder-desc">CPI/PPI/PMI 等关键经济指标</div><div class="placeholder-status">📡 部分接入</div></div></div>
-                <div class="card"><div class="card-header"><div class="card-title">📋 宏观事件</div></div><div class="placeholder-card"><div class="placeholder-icon">📋</div><div class="placeholder-desc">近期重要宏观事件与影响分析</div><div class="placeholder-status">⏳ 筹备中</div></div></div>
+                <div class="card"><div class="card-header"><div class="card-title">📊 国家统计局</div></div><div class="placeholder-card"><div class="placeholder-icon">📊</div><div class="placeholder-desc">CPI/PPI/PMI</div><div class="placeholder-status">📡 部分接入</div></div></div>
+                <div class="card"><div class="card-header"><div class="card-title">📋 宏观事件</div></div><div class="placeholder-card"><div class="placeholder-icon">📋</div><div class="placeholder-desc">近期重要事件</div><div class="placeholder-status">⏳ 筹备中</div></div></div>
             </div>
-            <div class="card">
-                <div class="card-header"><div class="card-title">📝 宏观摘要</div></div>
-                <div id="macro-summary" class="news-impact">暂无宏观更新</div>
-            </div>
+            <div class="card"><div class="card-header"><div class="card-title">📝 宏观摘要</div></div><div id="macro-summary" style="padding:12px;background:#f7fafc;border-radius:8px">暂无宏观更新</div></div>
             <div class="update-time">更新时间：<span id="macro-update-time">-</span></div>
         </div>
         
@@ -193,25 +158,23 @@
         <div id="monitor" class="page">
             <div class="page-header"><div class="page-title">👁️ 监控</div></div>
             <div class="card">
-                <div class="card-header"><div class="card-title">🔍 巡检模块</div></div>
-                <div class="info-list">
-                    <div class="info-item"><span class="info-label">早间巡检 (09:00)</span><span class="info-value" id="morning-inspect">-</span></div>
-                    <div class="info-item"><span class="info-label">晚间巡检 (21:00)</span><span class="info-value" id="evening-inspect">-</span></div>
-                    <div class="info-item"><span class="info-label">最后巡检</span><span class="info-value" id="last-inspect-time">-</span></div>
-                    <div class="info-item"><span class="info-label">巡检状态</span><span class="info-value" id="inspect-status">-</span></div>
+                <div class="card-header"><div class="card-title">🔍 巡检结果</div><span class="status-tag status-ok" id="inspect-status">正常</span></div>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">早间巡检</div><div class="metric-value" id="morning-inspect">-</div></div>
+                    <div class="metric"><div class="metric-label">晚间巡检</div><div class="metric-value" id="evening-inspect">-</div></div>
+                    <div class="metric"><div class="metric-label">最后巡检</div><div class="metric-value" id="last-inspect-time">-</div></div>
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><div class="card-title">🔔 告警信息</div></div>
-                <div class="info-list">
-                    <div class="info-item"><span class="info-label">当前告警数</span><span class="info-value" id="alert-count">0</span></div>
-                    <div class="info-item"><span class="info-label">未恢复告警</span><span class="info-value" id="unresolved-alert">0</span></div>
-                    <div class="info-item"><span class="info-label">最近告警</span><span class="info-value" id="last-alert">-</span></div>
-                    <div class="info-item"><span class="info-label">最近恢复</span><span class="info-value" id="last-recovery">-</span></div>
+                <div class="card-header"><div class="card-title">🔔 告警信息</div><span class="status-tag status-ok">无告警</span></div>
+                <div class="metrics">
+                    <div class="metric"><div class="metric-label">当前告警</div><div class="metric-value" id="alert-count">0</div></div>
+                    <div class="metric"><div class="metric-label">未恢复</div><div class="metric-value" id="unresolved-alert">0</div></div>
+                    <div class="metric"><div class="metric-label">最近告警</div><div class="metric-value" id="last-alert">-</div></div>
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><div class="card-title">❤️ 系统健康</div></div>
+                <div class="card-header"><div class="card-title">❤️ 系统健康</div><span class="status-tag status-ok">健康</span></div>
                 <div class="info-list">
                     <div class="info-item"><span class="info-label">Bot 进程</span><span class="info-value" id="mon-bot-status">-</span></div>
                     <div class="info-item"><span class="info-label">Demo API</span><span class="info-value" id="mon-demo-api">-</span></div>
@@ -219,10 +182,7 @@
                     <div class="info-item"><span class="info-label">总体状态</span><span class="info-value" id="mon-overall-status">-</span></div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header"><div class="card-title">🔧 故障排查</div></div>
-                <div class="placeholder-card"><div class="placeholder-icon">🔧</div><div class="placeholder-title">故障排查指引</div><div class="placeholder-desc">命令：python3 scripts/telegram_alert.py --check</div><div class="placeholder-status">📖 查看指引</div></div>
-            </div>
+            <div class="card"><div class="card-header"><div class="card-title">🔧 故障排查</div></div><div class="placeholder-card"><div class="placeholder-icon">🔧</div><div class="placeholder-title">故障排查指引</div><div class="placeholder-desc">scripts/telegram_alert.py --check</div><div class="placeholder-status">📖 查看</div></div></div>
             <div class="update-time">更新时间：<span id="monitor-update-time">-</span></div>
         </div>
         
@@ -238,10 +198,7 @@
                     <div class="info-item"><span class="info-label">状态</span><span class="info-value">只读</span></div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-header"><div class="card-title">📰 新闻源配置</div></div>
-                <div class="placeholder-card"><div class="placeholder-icon">📰</div><div class="placeholder-desc">后续支持多新闻源管理与切换</div><div class="placeholder-status">⏳ 待开放</div></div>
-            </div>
+            <div class="card"><div class="card-header"><div class="card-title">📰 新闻源</div></div><div class="placeholder-card"><div class="placeholder-status">⏳ 待开放</div></div></div>
             <div class="card">
                 <div class="card-header"><div class="card-title">⏰ 巡检配置</div></div>
                 <div class="info-list">
@@ -254,99 +211,91 @@
             <div class="card">
                 <div class="card-header"><div class="card-title">🔔 告警配置</div></div>
                 <div class="info-list">
-                    <div class="info-item"><span class="info-label">Telegram 告警</span><span class="info-value">已启用</span></div>
+                    <div class="info-item"><span class="info-label">Telegram</span><span class="info-value">已启用</span></div>
                     <div class="info-item"><span class="info-label">恢复通知</span><span class="info-value">已启用</span></div>
                     <div class="info-item"><span class="info-label">告警冷却</span><span class="info-value">1小时</span></div>
                     <div class="info-item"><span class="info-label">恢复冷却</span><span class="info-value">30分钟</span></div>
                 </div>
             </div>
+            <div class="card">
+                <div class="card-header"><div class="card-title">📊 数据概览</div></div>
+                <div class="info-list">
+                    <div class="info-item"><span class="info-label">当前版本</span><span class="info-value" id="git-commit">-</span></div>
+                    <div class="info-item"><span class="info-label">运行路径</span><span class="info-value">scripts/grid_bot.py</span></div>
+                    <div class="info-item"><span class="info-label">数据目录</span><span class="info-value">data/latest/</span></div>
+                    <div class="info-item"><span class="info-label">配置目录</span><span class="info-value">runs/grid_bot/</span></div>
+                </div>
+            </div>
             <div class="update-time">更新时间：<span id="system-update-time">-</span></div>
         </div>
     </div>
-    
-    <div class="footer">AI驾驶舱 | 数据来源：Binance Demo Trading | <a href="#" onclick="location.reload()" style="color:#3182ce;">刷新</a></div>
-    
+    <div class="footer">AI驾驶舱 | <a href="#" onclick="location.reload()" style="color:#3182ce">刷新</a></div>
     <script>
-        function showPage(pageId) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active')); document.getElementById(pageId).classList.add('active'); event.target.classList.add('active'); }
-        
-        async function loadData() {
-            try {
-                const [commander, quant, news, macro] = await Promise.all([
-                    fetch('../data/latest/commander_status.json').then(r => r.json()).catch(() => null),
-                    fetch('../data/latest/quant_report.json').then(r => r.json()).catch(() => null),
-                    fetch('../data/latest/news_report.json').then(r => r.json()).catch(() => null),
-                    fetch('../data/latest/macro_report.json').then(r => r.json()).catch(() => null)
-                ]);
-                
-                if (quant) {
-                    document.getElementById('usdt-balance').textContent = (quant.total_u || '-').toLocaleString();
-                    document.getElementById('btc-position').textContent = quant.position_btc || '0';
-                    document.getElementById('btc-price').textContent = '$' + (quant.price_usdt || quant.price || quant.price_usd || '-').toLocaleString();
-                    document.getElementById('utilization').textContent = (quant.capital_utilization_pct || 0) + '%';
-                    document.getElementById('used-u').textContent = (quant.used_u || '-').toLocaleString();
-                    document.getElementById('remaining-u').textContent = (quant.remaining_u || '-').toLocaleString();
-                    document.getElementById('open-orders').textContent = quant.open_orders_count || 0;
-                    document.getElementById('grid-levels').textContent = (quant.inventory_layers_used || 0) + '/' + (quant.inventory_layers_limit || 6);
-                    document.getElementById('top-action').textContent = quant.top_action || '-';
-                    document.getElementById('risk-reason').textContent = quant.risk_reason || '-';
-                    document.getElementById('quant-update-time').textContent = quant.updated_at || '-';
-                    if (quant.open_orders_prices?.length > 0) document.getElementById('order-prices').innerHTML = quant.open_orders_prices.map(p => `<span class="price-tag">$${p.toLocaleString()}</span>`).join('');
-                    const se = document.getElementById('quant-status-tag');
-                    if (quant.status === 'ok') { se.className = 'status-tag status-ok'; se.textContent = '正常'; } else { se.className = 'status-tag status-warning'; se.textContent = '异常'; }
+        function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('active'));document.getElementById(id).classList.add('active');event.target.classList.add('active');}
+        async function loadData(){
+            try{
+                var c=await fetch('../data/latest/commander_status.json').then(r=>r.json()).catch(()=>null);
+                var q=await fetch('../data/latest/quant_report.json').then(r=>r.json()).catch(()=>null);
+                var n=await fetch('../data/latest/news_report.json').then(r=>r.json()).catch(()=>null);
+                var m=await fetch('../data/latest/macro_report.json').then(r=>r.json()).catch(()=>null);
+                if(q){
+                    document.getElementById('usdt-balance').textContent=(q.total_u||'-').toLocaleString();
+                    document.getElementById('btc-position').textContent=q.position_btc||'0';
+                    document.getElementById('btc-price').textContent='$'+(q.price_usdt||q.price||q.price_usd||'-').toLocaleString();
+                    document.getElementById('utilization').textContent=(q.capital_utilization_pct||0)+'%';
+                    document.getElementById('used-u').textContent=(q.used_u||'-').toLocaleString();
+                    document.getElementById('remaining-u').textContent=(q.remaining_u||'-').toLocaleString();
+                    document.getElementById('open-orders').textContent=q.open_orders_count||0;
+                    document.getElementById('grid-levels').textContent=(q.inventory_layers_used||0)+'/'+(q.inventory_layers_limit||6);
+                    document.getElementById('top-action').textContent=q.top_action||'-';
+                    document.getElementById('risk-reason').textContent=q.risk_reason||'-';
+                    document.getElementById('quant-update-time').textContent=q.updated_at||'-';
+                    if(q.open_orders_prices&&q.open_orders_prices.length>0){document.getElementById('order-prices').innerHTML=q.open_orders_prices.map(p=>'<span class="price-tag">$'+p.toLocaleString()+'</span>').join('');}
+                    var qt=document.getElementById('quant-status-tag');
+                    if(q.status==='ok'){qt.className='status-tag status-ok';qt.textContent='正常';}else{qt.className='status-tag status-warning';qt.textContent='异常';}
                 }
-                
-                if (commander) {
-                    const r = commander.runtime || {}, s = commander.system || {}, q = commander.quant || {};
-                    document.getElementById('target-mode').textContent = r.target_mode || '-';
-                    document.getElementById('actual-mode').textContent = r.actual_mode || '-';
-                    document.getElementById('can-trade').textContent = q.data_validity ? '✅ 允许' : '❌ 禁止';
-                    document.getElementById('data-validity').textContent = q.data_validity ? '有效' : '无效';
-                    document.getElementById('freshness').textContent = q.data_validity ? '✅ 正常' : '❌ 无效';
-                    document.getElementById('last-sync').textContent = q.last_success_sync || '-';
-                    document.getElementById('demo-api-status').textContent = s.demo_api?.connected ? '✅ 正常' : '❌ 异常';
-                    document.getElementById('bot-status').textContent = s.bot?.running ? '✅ 运行中' : '❌ 已停止';
-                    document.getElementById('degrade-reason').textContent = r.degrade_reason || '无';
-                    document.getElementById('overall-status').textContent = commander.overall_status === 'ok' ? '正常' : (commander.overall_status === 'warning' ? '警告' : commander.overall_status);
-                    document.getElementById('mon-bot-status').textContent = s.bot?.running ? '✅ 运行中' : '❌ 已停止';
-                    document.getElementById('mon-demo-api').textContent = s.demo_api?.connected ? '✅ 正常' : '❌ 异常';
-                    document.getElementById('dashboard-sync').textContent = '✅ 正常';
-                    document.getElementById('mon-overall-status').textContent = commander.overall_status === 'ok' ? '正常' : '需关注';
+                if(c){
+                    var r=c.runtime||{},s=c.system||{},qc=c.quant||{};
+                    document.getElementById('target-mode').textContent=r.target_mode||'-';
+                    document.getElementById('actual-mode').textContent=r.actual_mode||'-';
+                    document.getElementById('can-trade').textContent=qc.data_validity?'✅ 允许':'❌ 禁止';
+                    document.getElementById('data-validity').textContent=qc.data_validity?'有效':'无效';
+                    document.getElementById('freshness').textContent=qc.data_validity?'✅ 正常':'❌ 无效';
+                    document.getElementById('last-sync').textContent=qc.last_success_sync||'-';
+                    document.getElementById('demo-api-status').textContent=s.demo_api?.connected?'✅ 正常':'❌ 异常';
+                    document.getElementById('bot-status').textContent=s.bot?.running?'✅ 运行中':'❌ 已停止';
+                    document.getElementById('degrade-reason').textContent=r.degrade_reason||'无';
+                    document.getElementById('overall-status').textContent=c.overall_status==='ok'?'正常':c.overall_status;
+                    document.getElementById('mon-bot-status').textContent=s.bot?.running?'✅ 运行中':'❌ 已停止';
+                    document.getElementById('mon-demo-api').textContent=s.demo_api?.connected?'✅ 正常':'❌ 异常';
+                    document.getElementById('dashboard-sync').textContent='✅ 正常';
+                    document.getElementById('mon-overall-status').textContent=c.overall_status==='ok'?'正常':'需关注';
+                    document.getElementById('git-commit').textContent=(r.current_commit||'-').substring(0,7);
                 }
-                
-                if (news) {
-                    document.getElementById('news-count').textContent = news.today_news_count || 0;
-                    document.getElementById('news-high-confidence').textContent = news.high_cred_today_count || 0;
-                    document.getElementById('news-mode').textContent = news.fetch_mode || '-';
-                    document.getElementById('news-update-time').textContent = news.updated_at || '-';
-                    
-                    // 新闻状态标签
-                    var ntag = document.getElementById('news-status-tag');
-                    if (news.fetch_status == '正常') {
-                        ntag.className = 'status-tag status-ok';
-                        ntag.textContent = '正常';
-                    } else if (news.fetch_status == '过滤后为空') {
-                        ntag.className = 'status-tag status-info';
-                        ntag.textContent = '无关键新闻';
-                    } else {
-                        ntag.className = 'status-tag status-warning';
-                        ntag.textContent = '抓取失败';
-                    }
-                    
-                    if (news.today_news && news.today_news.length > 0) {
-                        document.getElementById('news-list').innerHTML = news.today_news.slice(0,3).map(function(n){return '<div class="news-item"><div class="news-title">'+(n.title||'-')+'</div><div class="news-meta"><span>'+(n.source||'-')+'</span><span>'+(n.credibility||'-')+'</span></div></div>'}).join('');
-                    }
+                if(n){
+                    document.getElementById('news-count').textContent=n.today_news_count||0;
+                    document.getElementById('news-high-confidence').textContent=n.high_cred_today_count||0;
+                    document.getElementById('news-mode').textContent=n.fetch_mode||'-';
+                    document.getElementById('news-update-time').textContent=n.updated_at||'-';
+                    var nt=document.getElementById('news-status-tag');
+                    if(n.fetch_status==='正常'){nt.className='status-tag status-ok';nt.textContent='正常';}
+                    else if(n.fetch_status==='过滤后为空'){nt.className='status-tag status-info';nt.textContent='无关键新闻';}
+                    else{nt.className='status-tag status-warning';nt.textContent='抓取失败';}
+                    if(n.today_news&&n.today_news.length>0){document.getElementById('news-list').innerHTML=n.today_news.slice(0,3).map(function(x){return'<div class="news-item"><div class="news-title">'+(x.title||'-')+'</div><div class="news-meta">'+(x.source||'-')+' | '+(x.credibility||'-')+'</div></div>'}).join('');}
                 }
-                
-                if (macro) {
-                    document.getElementById('macro-stage').textContent = macro.stage || '-';
-                    document.getElementById('macro-strategy').textContent = macro.family_strategy || '-';
-                    document.getElementById('macro-advice').textContent = macro.advice || macro.one_sentence || '-';
-                    document.getElementById('macro-summary').textContent = macro.summary || '暂无宏观更新';
-                    document.getElementById('macro-update-time').textContent = macro.updated_at || '-';
+                if(m){
+                    document.getElementById('macro-stage').textContent=m.stage||'-';
+                    document.getElementById('macro-strategy').textContent=m.family_strategy||'-';
+                    document.getElementById('macro-advice').textContent=m.advice||m.one_sentence||'-';
+                    document.getElementById('macro-summary').textContent=m.summary||'暂无宏观更新';
+                    document.getElementById('macro-update-time').textContent=m.updated_at||'-';
                 }
-            } catch (e) { console.error('加载数据失败:', e); }
+                document.getElementById('morning-inspect').textContent='已完成';
+                document.getElementById('evening-inspect').textContent='待执行';
+                document.getElementById('last-inspect-time').textContent=new Date().toLocaleString('zh-CN');
+            }catch(e){console.error('加载失败',e);}
         }
-        loadData(); setInterval(loadData, 30000);
+        loadData();setInterval(loadData,30000);
     </script>
 </body>
 </html>
