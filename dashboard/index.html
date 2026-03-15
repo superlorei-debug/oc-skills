@@ -120,13 +120,13 @@
         <div id="news" class="page">
             <div class="page-header"><div class="page-title">🌍 资讯</div></div>
             <div class="card">
-                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">占位模式</span></div>
+                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">待接入</span></div>
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
                     <div class="metric"><div class="metric-label">状态</div><div class="metric-value" id="news-mode">待接入</div></div>
                 </div>
-                <div id="news-list" style="margin-top:12px"><div class="empty-state">暂无关键新闻</div></div>
+                <div id="news-list" style="margin-top:12px"><div class="empty-state">资讯模块正在接入中</div></div>
             </div>
             <div class="three-col">
                 <div class="card"><div class="card-header"><div class="card-title">₿ 加密市场</div></div><div class="placeholder-card"><div class="placeholder-icon">₿</div><div class="placeholder-title">加密市场</div><div class="placeholder-desc">BTC/ETH 行情动态</div><div class="placeholder-status">📡 接入中</div></div></div>
@@ -278,7 +278,7 @@
                     document.getElementById('news-count').textContent=n.today_news_count||0;
                     document.getElementById('news-high-confidence').textContent=n.high_cred_today_count||0;
                     document.getElementById('news-mode').textContent='待接入';
-                    document.getElementById('news-update-time').textContent=n.updated_at||'-';
+                    document.getElementById('news-update-time').textContent='待接入';
                     var nt=document.getElementById('news-status-tag');
                     if(n.fetch_status==='正常'){nt.className='status-tag status-ok';nt.textContent='正常';}
                     else if(n.fetch_status==='过滤后为空'){nt.className='status-tag status-info';nt.textContent='无关键新闻';}
