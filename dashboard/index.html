@@ -261,7 +261,7 @@
                     document.getElementById('can-trade').textContent=qc.data_validity?'✅ 允许':'❌ 禁止';
                     document.getElementById('data-validity').textContent=qc.data_validity?'有效':'无效';
                     document.getElementById('freshness').textContent=qc.data_validity?'✅ 正常':'❌ 无效';
-                    document.getElementById('last-sync').textContent=qc.last_success_sync||'-';
+                    document.getElementById('last-sync').textContent=q.updated_at||'-';
                     document.getElementById('demo-api-status').textContent=s.demo_api?.connected?'✅ 正常':'❌ 异常';
                     document.getElementById('bot-status').textContent=s.bot?.running?'✅ 运行中':'❌ 已停止';
                     document.getElementById('degrade-reason').textContent=r.degrade_reason||'无';
