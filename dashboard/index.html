@@ -84,7 +84,8 @@
                     <div class="metric"><div class="metric-label">BTC 持仓</div><div class="metric-value" id="btc-position">-</div></div>
                     <div class="metric"><div class="metric-label">BTC 价格</div><div class="metric-value" id="btc-price">-</div></div>
                     <div class="metric"><div class="metric-label">资金利用率</div><div class="metric-value" id="utilization">-</div></div>
-                    <div class="metric"><div class="metric-label">已占用</div><div class="metric-value" id="used-u">-</div></div>
+                    <div class="metric"><div class="metric-label">持仓成本</div><div class="metric-value" id="used-u">-</div></div>
+                    <div class="metric"><div class="metric-label">挂单冻结</div><div class="metric-value" id="reserved-u">-</div></div>
                     <div class="metric"><div class="metric-label">可用资金</div><div class="metric-value" id="remaining-u">-</div></div>
                 </div>
             </div>
@@ -119,11 +120,11 @@
         <div id="news" class="page">
             <div class="page-header"><div class="page-title">🌍 资讯</div></div>
             <div class="card">
-                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">待更新</span></div>
+                <div class="card-header"><div class="card-title">⚡ 突发新闻</div><span class="status-tag status-info" id="news-status-tag">占位模式</span></div>
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
-                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">-</div></div>
+                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">待接入</div></div>
                 </div>
                 <div id="news-list" style="margin-top:12px"><div class="empty-state">暂无关键新闻</div></div>
             </div>
@@ -139,13 +140,13 @@
         <div id="macro" class="page">
             <div class="page-header"><div class="page-title">🏠 宏观</div></div>
             <div class="card">
-                <div class="card-header"><div class="card-title">🔍 宏观判断</div><span class="status-tag status-ok">已执行</span></div>
+                <div class="card-header"><div class="card-title">🔍 宏观判断</div><span class="status-tag status-info">筹备中</span></div>
                 <div class="metrics">
-                    <div class="metric"><div class="metric-label">当前阶段</div><div class="metric-value" id="macro-stage">-</div></div>
-                    <div class="metric"><div class="metric-label">家庭策略</div><div class="metric-value" id="macro-strategy">-</div></div>
+                    <div class="metric"><div class="metric-label">当前阶段</div><div class="metric-value" id="macro-stage">待接入</div></div>
+                    <div class="metric"><div class="metric-label">家庭策略</div><div class="metric-value" id="macro-strategy">待接入</div></div>
                 </div>
             </div>
-            <div class="card"><div class="card-header"><div class="card-title">💭 一句话建议</div></div><div style="text-align:center;padding:16px"><span id="macro-advice" style="font-size:15px">-</span></div></div>
+            <div class="card"><div class="card-header"><div class="card-title">💭 一句话建议</div></div><div style="text-align:center;padding:16px"><span id="macro-advice" style="font-size:15px">宏观模块正在接入中...</span></div></div>
             <div class="two-col">
                 <div class="card"><div class="card-header"><div class="card-title">📊 国家统计局</div></div><div class="placeholder-card"><div class="placeholder-icon">📊</div><div class="placeholder-desc">CPI/PPI/PMI</div><div class="placeholder-status">📡 部分接入</div></div></div>
                 <div class="card"><div class="card-header"><div class="card-title">📋 宏观事件</div></div><div class="placeholder-card"><div class="placeholder-icon">📋</div><div class="placeholder-desc">近期重要事件</div><div class="placeholder-status">⏳ 筹备中</div></div></div>
@@ -244,6 +245,7 @@
                     document.getElementById('btc-price').textContent='$'+(q.price_usdt||q.price||q.price_usd||'-').toLocaleString();
                     document.getElementById('utilization').textContent=(q.capital_utilization_pct||0)+'%';
                     document.getElementById('used-u').textContent=(q.used_u||'-').toLocaleString();
+                    document.getElementById('reserved-u').textContent=(q.open_orders_reserved_u||'-').toLocaleString();
                     document.getElementById('remaining-u').textContent=(q.remaining_u||'-').toLocaleString();
                     document.getElementById('open-orders').textContent=q.open_orders_count||0;
                     document.getElementById('grid-levels').textContent=(q.inventory_layers_used||0)+'/'+(q.inventory_layers_limit||6);
