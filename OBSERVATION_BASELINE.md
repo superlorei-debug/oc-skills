@@ -147,13 +147,24 @@
 | **Commit** | 6428cda |
 | **状态** | 已合并到 master |
 
+### 事件 #6: quant_report.json 刷新问题
+
+| 项目 | 内容 |
+|------|------|
+| **时间** | 2026-03-15 10:20 |
+| **现象** | quant_report.json 约56分钟未更新 |
+| **根因** | 无自动刷新机制 - quant_report.py 只在 Dashboard 访问时触发 |
+| **修复** | scheduler 添加 quant_report 每30分钟定时刷新任务 |
+| **Commit** | 8e1acc5 |
+| **状态** | 已合并到 master |
+
 ---
 
 ## 九、版本锚点
 
 - **基线版本**: stable-observe-2026-03-14
 - **基线 Commit**: 1e16b43
-- **最新 Commit**: 6428cda
+- **最新 Commit**: 8e1acc5
 
 ---
 
