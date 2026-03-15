@@ -158,6 +158,17 @@
 | **Commit** | 8e1acc5 |
 | **状态** | 已合并到 master |
 
+### 事件 #7: Dashboard 数据看板未更新
+
+| 项目 | 内容 |
+|------|------|
+| **时间** | 2026-03-15 10:24 |
+| **现象** | Dashboard 量化页停在昨天，资讯页显示缓存模式 |
+| **根因** | Dashboard 读取 dashboard/data/latest/ 但无自动同步任务 |
+| **修复** | 添加 sync_dashboard.py + scheduler 每15分钟同步 |
+| **Commit** | 424ad76 |
+| **状态** | 已合并到 master |
+
 ---
 
 ## 九、版本锚点
