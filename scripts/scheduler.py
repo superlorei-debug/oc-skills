@@ -17,8 +17,11 @@ LOG_DIR = f"{PROJECT_DIR}/logs"
 
 # 任务配置
 TASKS = [
+    # 定时巡检
     {"name": "早间巡检", "hour": 9, "minute": 0, "script": "scripts/health_check.py", "args": ["--type", "morning", "--send"]},
     {"name": "晚间巡检", "hour": 21, "minute": 0, "script": "scripts/health_check.py", "args": ["--type", "evening", "--send"]},
+    # 量化报告定时刷新 (每30分钟)
+    {"name": "quant刷新", "hour": "*", "minute": "*/30", "script": "scripts/quant_report.py", "args": []},
 ]
 
 # 检查间隔（秒）
@@ -50,9 +53,22 @@ def check_and_run_tasks():
     now = datetime.now()
     
     for task in TASKS:
-        # 精确匹配：当前分钟等于任务分钟，且在最近30秒内
-        if now.hour == task["hour"] and now.minute == task["minute"] and now.second < 30:
-            # 避免同一分钟内重复执行
+        task_hour = task.get("hour")
+        task_minute = task.get("minute")
+        
+        # 支持间隔模式 */N
+        if isinstance(task_minute, str) and task_minute.startswith("*/"):
+            interval = int(task_minute[2:])
+            if now.minute % interval == 0 and now.second < 30:
+                last_run = getattr(check_and_run_tasks, "last_run", {})
+                key = f"{task['name']}_{now.date()}_{now.hour}"
+                if last_run.get(key, "") != f"{now.hour}:{now.minute}":
+                    print(f"⏰ 触发 {task['name']}...")
+                    run_task(task)
+                    last_run[key] = f"{now.hour}:{now.minute}"
+                    check_and_run_tasks.last_run = last_run
+        # 精确时间点匹配
+        elif task_hour != "*" and now.hour == task_hour and now.minute == task_minute and now.second < 30:
             last_run = getattr(check_and_run_tasks, "last_run", {})
             key = f"{task['name']}_{now.date()}"
             
