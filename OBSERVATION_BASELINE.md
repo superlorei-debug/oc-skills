@@ -117,58 +117,6 @@
 
 ## 八、事件记录
 
-### 事件 #1: 21:00 晚间巡检故障
-- Commit: bbb662d
-- 状态: 已修复
-
-### 事件 #2: freshness/告警分层修复
-- Commit: 61e68db
-- 状态: 已修复
-
-### 事件 #3: commander_status.json 排查
-- Commit: e8e41f3
-- 状态: 已归档
-
-### 事件 #4: Telegram 告警链 freshness 统一
-- Commit: 63c56e5
-- 状态: 已修复
-- 说明: telegram_alert.py 与 health_check.py 阈值边界已统一
-
-### 事件 #5: 定时巡检未发送 + 告警标题优化
-
-| 项目 | 内容 |
-|------|------|
-| **时间** | 2026-03-15 09:00 |
-| **现象** | 09:00 定时巡检未发送，"Dashboard 数据异常"标题过于激进 |
-| **根因1** | 旧 scheduler 进程未重启，仍使用旧代码 |
-| **根因2** | 告警标题无论什么情况都显示"异常" |
-| **修复1** | 重启 scheduler 进程 |
-| **修复2** | 优化告警标题：quant_report 过期时显示"异常"，其他显示"提醒" |
-| **Commit** | 6428cda |
-| **状态** | 已合并到 master |
-
-### 事件 #6: quant_report.json 刷新问题
-
-| 项目 | 内容 |
-|------|------|
-| **时间** | 2026-03-15 10:20 |
-| **现象** | quant_report.json 约56分钟未更新 |
-| **根因** | 无自动刷新机制 - quant_report.py 只在 Dashboard 访问时触发 |
-| **修复** | scheduler 添加 quant_report 每30分钟定时刷新任务 |
-| **Commit** | 8e1acc5 |
-| **状态** | 已合并到 master |
-
-### 事件 #7: Dashboard 数据看板未更新
-
-| 项目 | 内容 |
-|------|------|
-| **时间** | 2026-03-15 10:24 |
-| **现象** | Dashboard 量化页停在昨天，资讯页显示缓存模式 |
-| **根因** | Dashboard 读取 dashboard/data/latest/ 但无自动同步任务 |
-| **修复** | 添加 sync_dashboard.py + scheduler 每15分钟同步 |
-| **Commit** | 424ad76 |
-| **状态** | 已合并到 master |
-### 事件 #8: 最后同步字段显示旧时间
 
 | 项目 | 内容 |
 |------|------|
