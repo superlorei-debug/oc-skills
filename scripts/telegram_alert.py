@@ -212,18 +212,24 @@ def check_and_alert():
     # ==================== 2. Dashboard 数据健康检查 ====================
     dashboard_issues = check_dashboard_health()
     if dashboard_issues:
+        # 过滤占位模块，只保留关键问题
+        key_issues = [i for i in dashboard_issues if "quant_report" in i]
+        placeholder_issues = [i for i in dashboard_issues if "news_report" in i or "macro_report" in i]
+        
         # 根据过期文件类型决定标题
         has_quant_issue = any("quant_report.json" in issue for issue in dashboard_issues)
         if has_quant_issue:
             title = "Dashboard 数据异常"
+            details = key_issues + [f"📌 另有占位模块: {len(placeholder_issues)}个"] if placeholder_issues else key_issues
         else:
             title = "Dashboard 数据提醒"
+            details = ["均为占位模块，不影响主交易链"] if placeholder_issues else dashboard_issues
         
         alert_conditions.append({
             "type": "dashboard_data_issue",
             "title": title,
             "severity": "warning",
-            "details": dashboard_issues
+            "details": details
         })
     
     # 2. 发送告警
