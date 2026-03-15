@@ -212,9 +212,16 @@ def check_and_alert():
     # ==================== 2. Dashboard 数据健康检查 ====================
     dashboard_issues = check_dashboard_health()
     if dashboard_issues:
+        # 根据过期文件类型决定标题
+        has_quant_issue = any("quant_report.json" in issue for issue in dashboard_issues)
+        if has_quant_issue:
+            title = "Dashboard 数据异常"
+        else:
+            title = "Dashboard 数据提醒"
+        
         alert_conditions.append({
             "type": "dashboard_data_issue",
-            "title": "Dashboard 数据异常",
+            "title": title,
             "severity": "warning",
             "details": dashboard_issues
         })
