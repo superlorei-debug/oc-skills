@@ -84,7 +84,7 @@
                     <div class="metric"><div class="metric-label">BTC 持仓</div><div class="metric-value" id="btc-position">-</div></div>
                     <div class="metric"><div class="metric-label">BTC 价格</div><div class="metric-value" id="btc-price">-</div></div>
                     <div class="metric"><div class="metric-label">资金利用率</div><div class="metric-value" id="utilization">-</div></div>
-                    <div class="metric"><div class="metric-label">持仓成本</div><div class="metric-value" id="used-u">-</div></div>
+                    <div class="metric"><div class="metric-label">总占用</div><div class="metric-value" id="used-u">-</div></div>
                     <div class="metric"><div class="metric-label">挂单冻结</div><div class="metric-value" id="reserved-u">-</div></div>
                     <div class="metric"><div class="metric-label">可用资金</div><div class="metric-value" id="remaining-u">-</div></div>
                 </div>
@@ -124,7 +124,7 @@
                 <div class="metrics">
                     <div class="metric"><div class="metric-label">今日新闻数</div><div class="metric-value" id="news-count">0</div></div>
                     <div class="metric"><div class="metric-label">高可信</div><div class="metric-value" id="news-high-confidence">0</div></div>
-                    <div class="metric"><div class="metric-label">数据模式</div><div class="metric-value" id="news-mode">待接入</div></div>
+                    <div class="metric"><div class="metric-label">状态</div><div class="metric-value" id="news-mode">待接入</div></div>
                 </div>
                 <div id="news-list" style="margin-top:12px"><div class="empty-state">暂无关键新闻</div></div>
             </div>
@@ -277,7 +277,7 @@
                 if(n){
                     document.getElementById('news-count').textContent=n.today_news_count||0;
                     document.getElementById('news-high-confidence').textContent=n.high_cred_today_count||0;
-                    document.getElementById('news-mode').textContent=n.fetch_mode||'-';
+                    document.getElementById('news-mode').textContent='待接入';
                     document.getElementById('news-update-time').textContent=n.updated_at||'-';
                     var nt=document.getElementById('news-status-tag');
                     if(n.fetch_status==='正常'){nt.className='status-tag status-ok';nt.textContent='正常';}
@@ -287,8 +287,8 @@
                 }
                 if(m){
                     document.getElementById('macro-stage').textContent=m.stage||'-';
-                    document.getElementById('macro-strategy').textContent=m.family_strategy||'-';
-                    document.getElementById('macro-advice').textContent=m.advice||m.one_sentence||'-';
+                    document.getElementById('macro-strategy').textContent='待接入';
+                    document.getElementById('macro-advice').textContent='宏观模块正在接入中';
                     document.getElementById('macro-summary').textContent=m.summary||'暂无宏观更新';
                     document.getElementById('macro-update-time').textContent=m.updated_at||'-';
                 }
