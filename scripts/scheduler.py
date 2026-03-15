@@ -22,6 +22,8 @@ TASKS = [
     {"name": "晚间巡检", "hour": 21, "minute": 0, "script": "scripts/health_check.py", "args": ["--type", "evening", "--send"]},
     # 量化报告定时刷新 (每30分钟)
     {"name": "quant刷新", "hour": "*", "minute": "*/30", "script": "scripts/quant_report.py", "args": []},
+    # Dashboard 数据同步 (每15分钟)
+    {"name": "Dashboard同步", "hour": "*", "minute": "*/15", "script": "scripts/sync_dashboard.py", "args": []},
 ]
 
 # 检查间隔（秒）
